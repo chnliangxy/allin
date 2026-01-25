@@ -1,0 +1,637 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  position: sticky;
+  top: 0;
+  background: color-mix(in srgb, Canvas 92%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sync {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  opacity: 0.9;
+}
+
+.sync.connected {
+  border-color: color-mix(in srgb, #00c853 55%, transparent);
+}
+
+.sync.connecting {
+  border-color: color-mix(in srgb, #646cff 45%, transparent);
+}
+
+.sync.disconnected {
+  border-color: color-mix(in srgb, #ff4d4f 55%, transparent);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-title {
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.brand-sub {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab {
+  padding: 8px 12px;
+}
+
+.tab.active {
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.banner {
+  padding: 10px 16px;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.banner.error {
+  background: color-mix(in srgb, #ff4d4f 14%, transparent);
+  color: color-mix(in srgb, currentColor 88%, #ff4d4f);
+}
+
+.main {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.divider {
+  height: 1px;
+  background: color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+input,
+select {
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  padding: 10px 12px;
+  background: color-mix(in srgb, Canvas 95%, transparent);
+  color: inherit;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+button.primary {
+  border-color: color-mix(in srgb, #00c853 40%, transparent);
+}
+
+button.danger {
+  border-color: color-mix(in srgb, #ff4d4f 45%, transparent);
+}
+
+.players-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.player-edit {
+  display: grid;
+  grid-template-columns: 56px 1fr 140px 90px;
+  gap: 8px;
+  align-items: center;
+}
+
+.player-edit .seat {
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.rebuy {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rebuy-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summary {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.summary-left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 10px;
+  min-width: 120px;
+}
+
+.kpi-label {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.kpi-value {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.sidepots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sidepot {
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 160px;
+}
+
+.sidepot-title {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.sidepot-amount {
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.sidepot-eligible {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.players {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.player {
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.player.active {
+  border-color: color-mix(in srgb, #646cff 45%, transparent);
+}
+
+.player.active .p-name {
+  color: color-mix(in srgb, #646cff 85%, currentColor);
+}
+
+.p-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.p-name {
+  font-weight: 700;
+}
+
+.p-status {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.p-body {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.p-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.p-metric .value {
+  font-weight: 700;
+}
+
+.p-metric.wide {
+  grid-column: 1 / -1;
+}
+
+.actionbar {
+  position: sticky;
+  bottom: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, Canvas 92%, transparent);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.turn {
+  font-weight: 700;
+}
+
+.btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.btns-spacer {
+  flex: 1 1 auto;
+}
+
+.betto {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.betto input {
+  width: 120px;
+}
+
+.showdown {
+  margin-top: 8px;
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.winners {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.winner-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.winner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rule-block {
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rule-title {
+  font-weight: 800;
+}
+
+.rule-text {
+  opacity: 0.9;
+}
+
+.home-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.home-meta {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px 12px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 12px;
+}
+
+.home-meta .value {
+  font-weight: 700;
+}
+
+.game-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.summary-table {
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.summary-head,
+.summary-row {
+  display: grid;
+  grid-template-columns: 1.5fr 0.8fr 0.8fr 0.8fr 0.8fr;
+  gap: 8px;
+  padding: 10px 12px;
+  align-items: center;
+}
+
+.summary-head {
+  font-weight: 800;
+  background: color-mix(in srgb, Canvas 92%, transparent);
+}
+
+.summary-row {
+  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.fold {
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.fold > summary {
+  cursor: pointer;
+  padding: 12px;
+  font-weight: 800;
+  background: color-mix(in srgb, Canvas 92%, transparent);
+}
+
+.fold[open] > summary {
+  border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.fold-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.scoreboard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scoreboard-table {
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.scoreboard-head,
+.scoreboard-row {
+  display: grid;
+  grid-template-columns: 1.5fr 0.8fr 0.8fr 0.8fr;
+  gap: 8px;
+  padding: 10px 12px;
+  align-items: center;
+}
+
+.scoreboard-head {
+  font-weight: 800;
+  background: color-mix(in srgb, Canvas 92%, transparent);
+}
+
+.scoreboard-row {
+  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, #000 45%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+}
+
+.modal-card {
+  width: min(520px, 100%);
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  background: color-mix(in srgb, Canvas 96%, transparent);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.modal-text {
+  opacity: 0.9;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.modal-actions button {
+  padding: 14px 12px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.player-edit.pending-add {
+  background: color-mix(in srgb, #00c853 10%, transparent);
+}
+
+.player-edit.pending-delete {
+  background: color-mix(in srgb, #ff4d4f 10%, transparent);
+}
+
+.player-edit.dirty {
+  background: color-mix(in srgb, #646cff 10%, transparent);
+}
+
+.name.dirty,
+.stack.dirty {
+  border-color: color-mix(in srgb, #646cff 70%, transparent);
+}
+
+.net.pos {
+  color: color-mix(in srgb, #00c853 80%, currentColor);
+  font-weight: 700;
+}
+
+.net.neg {
+  color: color-mix(in srgb, #ff4d4f 80%, currentColor);
+  font-weight: 700;
+}
+
+.history {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  text-align: left;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.history-item.active {
+  border-color: color-mix(in srgb, #646cff 45%, transparent);
+}
+
+.history-name {
+  font-weight: 800;
+}
+
+.history-meta {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 4px;
+}
+
+.history-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .players {
+    grid-template-columns: 1fr;
+  }
+  .player-edit {
+    grid-template-columns: 56px 1fr;
+    grid-auto-rows: auto;
+  }
+  .player-edit .stack {
+    grid-column: 1 / -1;
+  }
+  .player-edit .danger {
+    grid-column: 1 / -1;
+  }
+  .winner-grid {
+    grid-template-columns: 1fr;
+  }
+  .history {
+    grid-template-columns: 1fr;
+  }
+  .summary-head,
+  .summary-row {
+    grid-template-columns: 1.5fr 0.8fr 0.8fr 0.8fr 0.8fr;
+  }
+}
