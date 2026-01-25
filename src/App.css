@@ -417,6 +417,21 @@ button.danger {
   gap: 10px;
 }
 
+button.toggle {
+  border-color: color-mix(in srgb, currentColor 18%, transparent);
+  background: color-mix(in srgb, Canvas 92%, transparent);
+}
+
+button.toggle.off {
+  border-color: color-mix(in srgb, currentColor 14%, transparent);
+  opacity: 0.75;
+}
+
+button.toggle.on {
+  border-color: color-mix(in srgb, #00c853 60%, transparent);
+  background: color-mix(in srgb, #00c853 22%, transparent);
+}
+
 .summary-table {
   border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
   border-radius: 12px;

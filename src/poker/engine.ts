@@ -215,7 +215,7 @@ function beginHand(state: GameState): GameState {
   const withBB = withSB.map((p) => (p.seat === bbSeat ? postForcedBet(p, state.config.bigBlind) : p))
 
   const currentBet = state.config.bigBlind
-  const actionSeat = nextSeatFrom(withBB, bbSeat, (p) => p.status === 'active')
+  const actionSeat = nextSeatFrom(withBB, bbSeat, (p) => p.status === 'active' && p.stack > 0)
 
   return {
     ...state,
@@ -238,6 +238,7 @@ function toCallFor(player: Player, state: GameState): number {
 
 function needsAction(player: Player, state: GameState): boolean {
   if (player.status !== 'active') return false
+  if (player.stack <= 0) return false
   if (!player.acted) return true
   return player.streetBet !== state.currentBet
 }
@@ -262,6 +263,18 @@ function moveToNextStreet(state: GameState): GameState {
       players: state.players.map((p) => ({ ...p, streetBet: 0, acted: true })),
       actionSeat: state.actionSeat,
       winners: remaining[0] ? [remaining[0].seat] : [],
+      lastError: null,
+    }
+  }
+
+  if (!remaining.some((p) => p.status === 'active')) {
+    return {
+      ...state,
+      phase: 'showdown',
+      street: state.street,
+      currentBet: 0,
+      players: state.players.map((p) => ({ ...p, streetBet: 0, acted: true })),
+      winners: [],
       lastError: null,
     }
   }
@@ -292,7 +305,7 @@ function moveToNextStreet(state: GameState): GameState {
     acted: p.status !== 'active',
   }))
 
-  const actionSeat = nextSeatFrom(players, state.dealerSeat, (p) => p.status === 'active')
+  const actionSeat = nextSeatFrom(players, state.dealerSeat, (p) => p.status === 'active' && p.stack > 0)
 
   return {
     ...state,
@@ -587,7 +600,13 @@ export function reducer(state: GameState, action: Action): GameState {
   const cleared = normalizeAfterError(state)
 
   if (action.type === 'RESET_GAME') return createInitialState()
-  if (action.type === 'SYNC_SET_SNAPSHOT') return { ...action.state, rollbackStack: action.state.rollbackStack ?? [], lastError: null }
+  if (action.type === 'SYNC_SET_SNAPSHOT') {
+    return {
+      ...action.state,
+      rollbackStack: action.state.rollbackStack ?? [],
+      lastError: typeof action.state.lastError === 'string' ? action.state.lastError : null,
+    }
+  }
 
   if (action.type === 'SESSION_START') {
     if (cleared.session && !cleared.session.endedAt) return cleared

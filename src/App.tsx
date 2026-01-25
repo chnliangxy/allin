@@ -20,6 +20,13 @@ type Route = 'home' | 'game' | 'summary' | 'history' | 'rules'
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 type HistoryFile = { name: string; mtimeMs: number; size: number }
 type PlayersSaveFeedback = { kind: 'success' | 'error'; text: string }
+type ConfirmState = {
+  title: string
+  message: string
+  confirmText: string
+  confirmVariant: 'primary' | 'danger'
+  onConfirm: () => void
+}
 
 function App() {
   const [state, dispatch] = useReducer(reducer, undefined, createInitialState)
@@ -38,6 +45,8 @@ function App() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [savedFileName, setSavedFileName] = useState<string | null>(null)
   const [playersSaveFeedback, setPlayersSaveFeedback] = useState<PlayersSaveFeedback | null>(null)
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null)
+  const [continuousGame, setContinuousGame] = useState(false)
 
   const potSize = useMemo(() => computePotSize(state.players), [state.players])
   const sidePots = useMemo(() => computeSidePots(state.players), [state.players])
@@ -189,12 +198,38 @@ function App() {
     setRoute('game')
   }
 
+  const settleHandWithMaybeContinue = () => {
+    const before = stateRef.current
+    dispatchWithSync({ type: 'SETTLE_HAND' })
+    if (!continuousGame) return
+    const after = stateRef.current
+    if (before.phase !== 'showdown') return
+    if (!after.session || after.session.endedAt) return
+    dispatchWithSync({ type: 'START_HAND' })
+    setRoute('game')
+  }
+
   const startNewSession = () => {
     setPlayersSaveFeedback(null)
     setSaveStatus('idle')
     setSavedFileName(null)
     dispatchWithSync({ type: 'RESET_GAME' })
     setRoute('game')
+  }
+
+  const requestStartNewSession = () => {
+    const cur = stateRef.current
+    if (cur.session && !cur.session.endedAt) {
+      setConfirm({
+        title: '开始新一局游戏',
+        message: '确认开始新一局游戏？将直接放弃正在进行的游戏。',
+        confirmText: '确认开始',
+        confirmVariant: 'danger',
+        onConfirm: startNewSession,
+      })
+      return
+    }
+    startNewSession()
   }
 
   const computeSessionSummary = (s: GameState): Array<{
@@ -285,7 +320,7 @@ function App() {
             <button className={route === 'home' ? 'tab active' : 'tab'} onClick={() => setRoute('home')}>
               主页
             </button>
-            <button className={route === 'game' ? 'tab active' : 'tab'} onClick={() => setRoute('game')}>
+            <button className={route === 'game' ? 'tab active' : 'tab'} onClick={() => setRoute(state.session?.endedAt ? 'summary' : 'game')}>
               游戏
             </button>
             <button className={route === 'history' ? 'tab active' : 'tab'} onClick={() => setRoute('history')}>
@@ -306,11 +341,11 @@ function App() {
             state={state}
             syncStatus={syncStatus}
             onContinue={() => setRoute(state.session?.endedAt ? 'summary' : 'game')}
-            onStartNew={startNewSession}
+            onStartNew={requestStartNewSession}
             onOpenHistory={() => setRoute('history')}
           />
         ) : route === 'history' ? (
-          <HistoryView onBackHome={() => setRoute('home')} />
+          <HistoryView />
         ) : route === 'rules' ? (
           <RulesView />
         ) : route === 'summary' ? (
@@ -319,8 +354,7 @@ function App() {
             rows={computeSessionSummary(state)}
             saveStatus={saveStatus}
             savedFileName={savedFileName}
-            onBackHome={() => setRoute('home')}
-            onStartNew={startNewSession}
+            onStartNew={requestStartNewSession}
             onSave={() => {
               const session = state.session
               if (!session || !session.endedAt) return
@@ -335,10 +369,12 @@ function App() {
             setupKey={setupKey}
             canEditSetup={!state.session || !!state.session.endedAt}
             canRollback={state.rollbackStack.length > 0}
-            onGoHome={() => setRoute('home')}
             onEndSession={() => void endSession()}
             onCancelHand={() => dispatchWithSync({ type: 'CANCEL_HAND' })}
             onRollback={() => dispatchWithSync({ type: 'ROLLBACK' })}
+            onRequestConfirm={(c) => setConfirm(c)}
+            continuousGame={continuousGame}
+            onToggleContinuous={() => setContinuousGame((v) => !v)}
             playersSaveFeedback={playersSaveFeedback}
             onSetPlayersSaveFeedback={setPlayersSaveFeedback}
             onApplyConfig={(c) => dispatchWithSync({ type: 'SETUP_SET_CONFIG', config: c })}
@@ -352,10 +388,25 @@ function App() {
             onSetBoard={(text) => dispatchWithSync({ type: 'SET_BOARD', text })}
             onSetHole={(seat, text) => dispatchWithSync({ type: 'SET_HOLE', seat, text })}
             onSetWinners={(seats) => dispatchWithSync({ type: 'SET_WINNERS', seats })}
-            onSettle={() => dispatchWithSync({ type: 'SETTLE_HAND' })}
+            onSettle={settleHandWithMaybeContinue}
           />
         )}
       </main>
+
+      {confirm ? (
+        <ConfirmDialog
+          title={confirm.title}
+          message={confirm.message}
+          confirmText={confirm.confirmText}
+          confirmVariant={confirm.confirmVariant}
+          onCancel={() => setConfirm(null)}
+          onConfirm={() => {
+            const action = confirm.onConfirm
+            setConfirm(null)
+            action()
+          }}
+        />
+      ) : null}
     </div>
   )
 }
@@ -614,6 +665,7 @@ function TableView(props: {
   const suggestedBetTo = minRaiseTo(state)
   const [rankMap, setRankMap] = useState<Map<number, HandRank>>(new Map())
   const [autoEvalError, setAutoEvalError] = useState<string | null>(null)
+  const dealerName = state.players[state.dealerSeat]?.name ?? `玩家${state.dealerSeat + 1}`
 
   const actor = state.players[state.actionSeat]
   const actorToCall = actor ? toCall(state, actor.seat) : 0
@@ -638,13 +690,15 @@ function TableView(props: {
           </div>
           <div className="kpi">
             <div className="kpi-label">庄家位</div>
-            <div className="kpi-value">#{state.dealerSeat + 1}</div>
+            <div className="kpi-value">
+              #{state.dealerSeat + 1} {dealerName}
+            </div>
           </div>
         </div>
         <div className="summary-right">
           <button onClick={props.onNextStreet}>强制下一街</button>
           <button className="danger" disabled={!props.canRollback} onClick={props.onRequestRollback}>
-            Rollback
+            回滚操作
           </button>
         </div>
       </div>
@@ -735,10 +789,6 @@ function TableView(props: {
             <button onClick={() => props.onAct(actor.seat, { type: 'ALLIN' })}>All-in ({actor.stack})</button>
             <button className="danger" onClick={() => props.onAct(actor.seat, { type: 'FOLD' })}>
               Fold
-            </button>
-            <div className="btns-spacer" />
-            <button className="danger" disabled={!props.canRollback} onClick={props.onRequestRollback}>
-              Rollback
             </button>
           </div>
         </div>
@@ -930,10 +980,12 @@ function GameView(props: {
   setupKey: string
   canEditSetup: boolean
   canRollback: boolean
-  onGoHome: () => void
   onEndSession: () => void
   onCancelHand: () => void
   onRollback: () => void
+  onRequestConfirm: (c: ConfirmState) => void
+  continuousGame: boolean
+  onToggleContinuous: () => void
   playersSaveFeedback: PlayersSaveFeedback | null
   onSetPlayersSaveFeedback: (v: PlayersSaveFeedback | null) => void
   onApplyConfig: (c: GameConfig) => void
@@ -949,16 +1001,6 @@ function GameView(props: {
   onSetWinners: (seats: number[]) => void
   onSettle: () => void
 }) {
-  type ConfirmState = {
-    title: string
-    message: string
-    confirmText: string
-    confirmVariant: 'primary' | 'danger'
-    onConfirm: () => void
-  }
-
-  const [confirm, setConfirm] = useState<ConfirmState | null>(null)
-
   const scoreboardRows = useMemo(() => {
     const rebuys = props.state.session?.rebuys ?? []
     return props.state.players
@@ -974,11 +1016,10 @@ function GameView(props: {
   return (
     <div className="panel">
       <div className="game-controls">
-        <button onClick={props.onGoHome}>返回主页</button>
         {props.state.phase !== 'setup' ? (
           <button
             onClick={() => {
-              setConfirm({
+              props.onRequestConfirm({
                 title: '结束这一手游戏',
                 message: '确认结束这一手游戏？本手积分不计，并返回准备页面。',
                 confirmText: '确认结束',
@@ -993,7 +1034,7 @@ function GameView(props: {
         <button
           className="danger"
           onClick={() => {
-            setConfirm({
+            props.onRequestConfirm({
               title: '结束整局游戏',
               message: '确认结束整局游戏？结束后将进入积分汇总并保存历史。',
               confirmText: '确认结束',
@@ -1003,6 +1044,9 @@ function GameView(props: {
           }}
         >
           结束整局游戏
+        </button>
+        <button className={props.continuousGame ? 'toggle on' : 'toggle off'} aria-pressed={props.continuousGame} onClick={props.onToggleContinuous}>
+          连续游戏：{props.continuousGame ? '开' : '关'}
         </button>
       </div>
 
@@ -1042,7 +1086,7 @@ function GameView(props: {
           onStartHand={props.onStartHand}
           onRebuy={props.onRebuy}
           onReset={() => {
-            setConfirm({
+            props.onRequestConfirm({
               title: '重置',
               message: '确认重置？将清空当前局面与玩家筹码记录。',
               confirmText: '确认重置',
@@ -1064,7 +1108,7 @@ function GameView(props: {
           onSettle={props.onSettle}
           canRollback={props.canRollback}
           onRequestRollback={() => {
-            setConfirm({
+            props.onRequestConfirm({
               title: 'Rollback',
               message: '确认回滚上一次操作？',
               confirmText: '确认回滚',
@@ -1076,21 +1120,6 @@ function GameView(props: {
       )}
 
       {!props.canEditSetup && props.state.phase === 'setup' ? <div className="banner">本局进行中：盲注与玩家设置将锁定</div> : null}
-
-      {confirm ? (
-        <ConfirmDialog
-          title={confirm.title}
-          message={confirm.message}
-          confirmText={confirm.confirmText}
-          confirmVariant={confirm.confirmVariant}
-          onCancel={() => setConfirm(null)}
-          onConfirm={() => {
-            const action = confirm.onConfirm
-            setConfirm(null)
-            action()
-          }}
-        />
-      ) : null}
     </div>
   )
 }
@@ -1133,7 +1162,6 @@ function SessionSummaryView(props: {
   rows: SummaryRow[]
   saveStatus: SaveStatus
   savedFileName: string | null
-  onBackHome: () => void
   onStartNew: () => void
   onSave: () => void
 }) {
@@ -1180,7 +1208,6 @@ function SessionSummaryView(props: {
       </div>
 
       <div className="actions">
-        <button onClick={props.onBackHome}>返回主页</button>
         <button className="primary" onClick={props.onStartNew}>
           开始新一局游戏
         </button>
@@ -1206,7 +1233,7 @@ type HistoryRecord = {
   snapshot: GameState
 }
 
-function HistoryView(props: { onBackHome: () => void }) {
+function HistoryView() {
   const [files, setFiles] = useState<HistoryFile[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -1271,7 +1298,6 @@ function HistoryView(props: { onBackHome: () => void }) {
     <div className="panel">
       <div className="panel-title">历史记录</div>
       <div className="actions">
-        <button onClick={props.onBackHome}>返回主页</button>
         <button onClick={() => window.location.reload()} disabled={loading}>
           刷新
         </button>
