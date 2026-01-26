@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { GameConfig, GameState, PlayerAction } from '../poker/engine'
-import type { ConfirmState, PlayersSaveFeedback, UiStyle } from '../uiTypes'
+import type { BoundPlayer, ConfirmState, PlayersSaveFeedback, UiStyle } from '../uiTypes'
 import SetupView from './SetupView'
 import TableView from './TableView'
 
@@ -12,6 +12,8 @@ type Props = {
   canEditConfig: boolean
   playersEditMode: 'full' | 'addRemove'
   canRollback: boolean
+  boundPlayer: BoundPlayer | null
+  onSetBoundPlayer: (v: BoundPlayer | null) => void
   onEndSession: () => void
   onCancelHand: () => void
   onRollback: () => void
@@ -143,6 +145,7 @@ function GameView(props: Props) {
               potSize={props.potSize}
               sidePots={props.sidePots}
               uiStyle={props.uiStyle}
+              boundPlayer={props.boundPlayer}
               onAct={props.onAct}
               onNextStreet={props.onNextStreet}
               onSetBoard={props.onSetBoard}
@@ -167,6 +170,8 @@ function GameView(props: Props) {
               dealerSeat={props.state.dealerSeat}
               canEditConfig={props.canEditConfig}
               playersEditMode={props.playersEditMode}
+              boundPlayer={props.boundPlayer}
+              onSetBoundPlayer={props.onSetBoundPlayer}
               playersSaveFeedback={props.playersSaveFeedback}
               onSetPlayersSaveFeedback={props.onSetPlayersSaveFeedback}
               onApplyConfig={props.onApplyConfig}
@@ -193,6 +198,8 @@ function GameView(props: Props) {
             dealerSeat={props.state.dealerSeat}
             canEditConfig={props.canEditConfig}
             playersEditMode={props.playersEditMode}
+            boundPlayer={props.boundPlayer}
+            onSetBoundPlayer={props.onSetBoundPlayer}
             playersSaveFeedback={props.playersSaveFeedback}
             onSetPlayersSaveFeedback={props.onSetPlayersSaveFeedback}
             onApplyConfig={props.onApplyConfig}
@@ -217,6 +224,7 @@ function GameView(props: Props) {
           potSize={props.potSize}
           sidePots={props.sidePots}
           uiStyle={props.uiStyle}
+          boundPlayer={props.boundPlayer}
           onAct={props.onAct}
           onNextStreet={props.onNextStreet}
           onSetBoard={props.onSetBoard}

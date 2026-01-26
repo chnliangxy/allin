@@ -21,3 +21,8 @@ export type TurnToastInfo = {
   name: string
 }
 
+export type BoundPlayer = {
+  seat: number
+  name: string
+}
+

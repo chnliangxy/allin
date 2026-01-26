@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { GameConfig } from '../poker/engine'
-import type { PlayersSaveFeedback } from '../uiTypes'
+import type { BoundPlayer, PlayersSaveFeedback } from '../uiTypes'
 
 type Props = {
   config: GameConfig
@@ -8,6 +8,8 @@ type Props = {
   dealerSeat: number
   canEditConfig: boolean
   playersEditMode: 'full' | 'addRemove'
+  boundPlayer: BoundPlayer | null
+  onSetBoundPlayer: (v: BoundPlayer | null) => void
   playersSaveFeedback: PlayersSaveFeedback | null
   onSetPlayersSaveFeedback: (v: PlayersSaveFeedback | null) => void
   onApplyConfig: (c: GameConfig) => void
@@ -192,6 +194,21 @@ function SetupView(props: Props) {
                   disabled={p.deleted || (isAddRemove && !p.isNew)}
                 />
                 <button
+                  className={props.boundPlayer?.seat === idx ? 'primary bind' : 'bind'}
+                  disabled={p.deleted}
+                  onClick={() => {
+                    clearSavePlayersFeedback()
+                    const nextName = p.name.trim() || `玩家${idx + 1}`
+                    if (props.boundPlayer?.seat === idx) {
+                      props.onSetBoundPlayer(null)
+                    } else {
+                      props.onSetBoundPlayer({ seat: idx, name: nextName })
+                    }
+                  }}
+                >
+                  {props.boundPlayer?.seat === idx ? '解绑' : '绑定'}
+                </button>
+                <button
                   className="danger"
                   disabled={!p.isNew && !p.deleted && draftPlayers.filter((x) => !x.deleted).length <= 2}
                   onClick={() => {
@@ -200,8 +217,10 @@ function SetupView(props: Props) {
                     const cur = next[idx]
                     if (!cur) return
                     if (cur.isNew) {
+                      if (props.boundPlayer?.seat === idx) props.onSetBoundPlayer(null)
                       next.splice(idx, 1)
                     } else {
+                      if (props.boundPlayer?.seat === idx) props.onSetBoundPlayer(null)
                       next[idx] = { ...cur, deleted: !cur.deleted }
                     }
                     setDraftPlayers(next)

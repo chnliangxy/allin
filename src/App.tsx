@@ -15,6 +15,7 @@ import SessionSummaryView, { type SummaryRow } from './views/SessionSummaryView'
 import GameView from './views/GameView'
 import HistoryView from './views/HistoryView'
 import type {
+  BoundPlayer,
   ConfirmState,
   PlayersSaveFeedback,
   Route,
@@ -42,6 +43,21 @@ function App() {
     const v = localStorage.getItem('allin.uiStyle')
     return v === 'text' ? 'text' : 'scene'
   })
+  const [boundPlayer, setBoundPlayer] = useState<BoundPlayer | null>(() => {
+    const raw = localStorage.getItem('allin.boundPlayer')
+    if (!raw) return null
+    try {
+      const v = JSON.parse(raw) as unknown
+      if (typeof v !== 'object' || v === null) return null
+      const seat = (v as Record<string, unknown>).seat
+      const name = (v as Record<string, unknown>).name
+      if (typeof seat !== 'number' || !Number.isFinite(seat)) return null
+      if (typeof name !== 'string') return null
+      return { seat: Math.trunc(seat), name }
+    } catch {
+      return null
+    }
+  })
 
   const { syncStatus, dispatchWithSync, stateRef } = useGameSync({ state, dispatch, reducer, route, setRoute })
 
@@ -52,6 +68,15 @@ function App() {
     const configKey = `${state.config.smallBlind}-${state.config.bigBlind}-${state.config.ante}`
     return `${playersKey}-${configKey}-${state.dealerSeat}`
   }, [state.players, state.config, state.dealerSeat])
+  const resolvedBoundPlayer = useMemo((): BoundPlayer | null => {
+    if (!boundPlayer) return null
+    const seat = boundPlayer.seat
+    const direct = seat >= 0 && seat < state.players.length ? state.players[seat] : null
+    if (direct && direct.name === boundPlayer.name) return boundPlayer
+    const idx = state.players.findIndex((p) => p.name === boundPlayer.name)
+    if (idx >= 0) return { seat: idx, name: boundPlayer.name }
+    return null
+  }, [boundPlayer, state.players])
 
   useEffect(() => {
     localStorage.setItem('allin.route', route)
@@ -60,6 +85,14 @@ function App() {
   useEffect(() => {
     localStorage.setItem('allin.uiStyle', uiStyle)
   }, [uiStyle])
+
+  useEffect(() => {
+    if (!boundPlayer) {
+      localStorage.removeItem('allin.boundPlayer')
+      return
+    }
+    localStorage.setItem('allin.boundPlayer', JSON.stringify(boundPlayer))
+  }, [boundPlayer])
 
   useEffect(() => {
     if (state.phase !== 'hand') {
@@ -278,6 +311,8 @@ function App() {
             canEditConfig={!state.session || !!state.session.endedAt}
             playersEditMode={state.session && !state.session.endedAt ? 'addRemove' : 'full'}
             canRollback={state.rollbackStack.length > 0}
+            boundPlayer={resolvedBoundPlayer}
+            onSetBoundPlayer={setBoundPlayer}
             onEndSession={() => void endSession()}
             onCancelHand={() => dispatchWithSync({ type: 'CANCEL_HAND' })}
             onRollback={() => dispatchWithSync({ type: 'ROLLBACK' })}
