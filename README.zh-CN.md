@@ -4,6 +4,8 @@
 
 一个用于线下德州扑克局的筹码与整局记录助手（支持多端同步）。
 
+![All-in 展示图](./public/demo.png)
+
 ## 功能
 
 - 准备阶段：盲注/前注设置、玩家与筹码、庄家位、补码
@@ -70,3 +72,6 @@ docker compose up --build
 - `src/views/`：页面视图（主页/游戏/历史/规则/汇总）
 - `src/hooks/`：同步与状态相关 Hook（WebSocket 快照同步）
 
+## 许可协议
+
+本项目使用 Apache License 2.0，详见 [LICENSE](./LICENSE)。

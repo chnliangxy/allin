@@ -4,6 +4,8 @@
 
 An offline Texas Hold’em chip + session helper for live home games.
 
+![All-in screenshot](./public/demo.png)
+
 ## Features
 
 - Table setup: blinds/ante, players, dealer position, rebuy
@@ -69,3 +71,7 @@ The default `docker-compose.yml` mounts `./allin/history` into `/app/history`. A
 - `src/poker/`: engine and hand evaluation
 - `src/views/`: UI pages (home/game/history/rules/summary)
 - `src/hooks/`: sync/state hooks (WebSocket snapshot sync)
+
+## License
+
+Apache-2.0. See [LICENSE](./LICENSE).
