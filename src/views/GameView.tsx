@@ -78,7 +78,9 @@ function GameView(props: Props) {
         >
           结束整局游戏
         </button>
-        <button onClick={props.onToggleContinuous}>连续游戏：{props.continuousGame ? '开' : '关'}</button>
+        <button className={props.continuousGame ? 'continuous-toggle on' : 'continuous-toggle'} onClick={props.onToggleContinuous}>
+          连续游戏：{props.continuousGame ? '开' : '关'}
+        </button>
       </div>
 
       <div className="scoreboard">
@@ -156,4 +158,3 @@ function GameView(props: Props) {
 }
 
 export default GameView
-
