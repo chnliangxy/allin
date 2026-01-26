@@ -1,73 +1,71 @@
-# React + TypeScript + Vite
+# All-in
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+[中文说明 / Chinese README](./README.zh-CN.md)
 
-Currently, two official plugins are available:
+An offline Texas Hold’em chip + session helper for live home games.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+- Table setup: blinds/ante, players, dealer position, rebuy
+- In-hand tracking: actions, pot and side pots, rollback, forced next street
+- Showdown settlement: manual winners selection + optional auto-evaluation from card text input
+- Session summary: per-player initial/rebuy/final/net and save to history
+- Real-time sync: broadcast snapshots across devices via WebSocket (`/sync`)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+- React + TypeScript + Vite
+- `ws` for WebSocket sync (runs inside Vite dev/preview server)
+- File-based history storage under `./history/`
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Quick Start
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open the URL printed by Vite (usually http://localhost:5173).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Scripts
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- `npm run dev`: start dev server
+- `npm run build`: typecheck + build
+- `npm run lint`: eslint
+- `npm run preview`: serve the built `dist` with the same APIs (see below)
+
+## Built-in APIs
+
+These endpoints are provided by a Vite plugin in [vite.config.ts](./vite.config.ts):
+
+- **WebSocket**: `GET /sync`
+  - Broadcasts latest game snapshot to all connected clients
+- **History REST API**:
+  - `GET /api/history` → list `*.json` in `./history/`
+  - `GET /api/history/:name` → read a history file
+  - `POST /api/history` → write a new history file
+
+History files are stored on the server filesystem under `./history/` (auto-created).
+
+## Docker
+
+Build and run:
+
+```bash
+docker build -t allin .
+docker run --rm -p 4173:4173 -v "$PWD/history:/app/history" allin
 ```
+
+Or use docker compose:
+
+```bash
+docker compose up --build
+```
+
+The default `docker-compose.yml` mounts `./allin/history` into `/app/history`. Adjust it if you prefer `./history`.
+
+## Project Structure
+
+- `src/poker/`: engine and hand evaluation
+- `src/views/`: UI pages (home/game/history/rules/summary)
+- `src/hooks/`: sync/state hooks (WebSocket snapshot sync)
