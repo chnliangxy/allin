@@ -20,6 +20,7 @@ import type {
   Route,
   SaveStatus,
   TurnToastInfo,
+  UiStyle,
 } from './uiTypes'
 
 function App() {
@@ -37,6 +38,10 @@ function App() {
   const [confirm, setConfirm] = useState<ConfirmState | null>(null)
   const [continuousGame, setContinuousGame] = useState(false)
   const [turnToast, setTurnToast] = useState<TurnToastInfo | null>(null)
+  const [uiStyle, setUiStyle] = useState<UiStyle>(() => {
+    const v = localStorage.getItem('allin.uiStyle')
+    return v === 'text' ? 'text' : 'scene'
+  })
 
   const { syncStatus, dispatchWithSync, stateRef } = useGameSync({ state, dispatch, reducer, route, setRoute })
 
@@ -51,6 +56,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('allin.route', route)
   }, [route])
+
+  useEffect(() => {
+    localStorage.setItem('allin.uiStyle', uiStyle)
+  }, [uiStyle])
 
   useEffect(() => {
     if (state.phase !== 'hand') {
@@ -201,6 +210,14 @@ function App() {
           <div className={syncStatus === 'connected' ? 'sync connected' : syncStatus === 'connecting' ? 'sync connecting' : 'sync disconnected'}>
             同步：{syncStatus === 'connected' ? '已连接' : syncStatus === 'connecting' ? '连接中' : '未连接'}
           </div>
+          <div className="style-toggle">
+            <button className={uiStyle === 'scene' ? 'seg active' : 'seg'} onClick={() => setUiStyle('scene')}>
+              场景
+            </button>
+            <button className={uiStyle === 'text' ? 'seg active' : 'seg'} onClick={() => setUiStyle('text')}>
+              文字
+            </button>
+          </div>
           <div className="tabs">
             <button className={route === 'home' ? 'tab active' : 'tab'} onClick={() => setRoute('home')}>
               主页
@@ -258,7 +275,8 @@ function App() {
             potSize={potSize}
             sidePots={sidePots}
             setupKey={setupKey}
-            canEditSetup={!state.session || !!state.session.endedAt}
+            canEditConfig={!state.session || !!state.session.endedAt}
+            playersEditMode={state.session && !state.session.endedAt ? 'addRemove' : 'full'}
             canRollback={state.rollbackStack.length > 0}
             onEndSession={() => void endSession()}
             onCancelHand={() => dispatchWithSync({ type: 'CANCEL_HAND' })}
@@ -266,6 +284,7 @@ function App() {
             onRequestConfirm={(c) => setConfirm(c)}
             continuousGame={continuousGame}
             onToggleContinuous={() => setContinuousGame((v) => !v)}
+            uiStyle={uiStyle}
             playersSaveFeedback={playersSaveFeedback}
             onSetPlayersSaveFeedback={setPlayersSaveFeedback}
             onApplyConfig={(c) => dispatchWithSync({ type: 'SETUP_SET_CONFIG', config: c })}

@@ -4,7 +4,7 @@
 
 一个用于线下德州扑克局的筹码与整局记录助手（支持多端同步）。
 
-![All-in 展示图](./public/demo.png)
+![All-in 展示图 01](./public/demo.png) ![All-in 展示图 02](./public/demo2.png)
 
 ## 功能
 
