@@ -6,7 +6,8 @@ type Props = {
   config: GameConfig
   players: Array<{ name: string; stack: number }>
   dealerSeat: number
-  canEditPlayers: boolean
+  canEditConfig: boolean
+  playersEditMode: 'full' | 'addRemove'
   playersSaveFeedback: PlayersSaveFeedback | null
   onSetPlayersSaveFeedback: (v: PlayersSaveFeedback | null) => void
   onApplyConfig: (c: GameConfig) => void
@@ -25,6 +26,7 @@ function SetupView(props: Props) {
     props.players.map((p) => ({ ...p, deleted: false, isNew: false })),
   )
   const [rebuyAmount, setRebuyAmount] = useState(100)
+  const isAddRemove = props.playersEditMode === 'addRemove'
 
   const canStart = draftPlayers
     .filter((p) => !p.deleted)
@@ -32,9 +34,23 @@ function SetupView(props: Props) {
   const clearSavePlayersFeedback = () => props.onSetPlayersSaveFeedback(null)
 
   const savePlayers = () => {
-    if (!props.canEditPlayers) {
-      props.onSetPlayersSaveFeedback({ kind: 'error', text: '本局游戏进行中，不能修改玩家' })
-      return
+    const baseCount = props.players.length
+    if (isAddRemove) {
+      for (let i = 0; i < baseCount; i++) {
+        const draft = draftPlayers[i]
+        const saved = props.players[i]
+        if (!draft || !saved) {
+          props.onSetPlayersSaveFeedback({ kind: 'error', text: '玩家列表无效' })
+          return
+        }
+        if (draft.deleted) continue
+        const nextName = draft.name.trim()
+        const nextStack = Math.max(0, Math.trunc(draft.stack))
+        if (nextName !== saved.name || nextStack !== saved.stack) {
+          props.onSetPlayersSaveFeedback({ kind: 'error', text: '本局游戏进行中，不能修改现有玩家信息（可新增/删除玩家）' })
+          return
+        }
+      }
     }
     const remaining = draftPlayers.filter((p) => !p.deleted)
     if (remaining.length < 2) {
@@ -73,6 +89,7 @@ function SetupView(props: Props) {
                 value={draftConfig.smallBlind}
                 min={0}
                 onChange={(e) => setDraftConfig({ ...draftConfig, smallBlind: Number(e.target.value) })}
+                disabled={!props.canEditConfig}
               />
             </div>
             <div className="field">
@@ -82,6 +99,7 @@ function SetupView(props: Props) {
                 value={draftConfig.bigBlind}
                 min={0}
                 onChange={(e) => setDraftConfig({ ...draftConfig, bigBlind: Number(e.target.value) })}
+                disabled={!props.canEditConfig}
               />
             </div>
             <div className="field">
@@ -91,6 +109,7 @@ function SetupView(props: Props) {
                 value={draftConfig.ante}
                 min={0}
                 onChange={(e) => setDraftConfig({ ...draftConfig, ante: Number(e.target.value) })}
+                disabled={!props.canEditConfig}
               />
             </div>
             <div className="field">
@@ -106,7 +125,9 @@ function SetupView(props: Props) {
           </div>
 
           <div className="actions">
-            <button onClick={() => props.onApplyConfig(draftConfig)}>保存盲注设置</button>
+            <button disabled={!props.canEditConfig} onClick={() => props.onApplyConfig(draftConfig)}>
+              保存规则设置
+            </button>
           </div>
         </div>
       </details>
@@ -149,7 +170,7 @@ function SetupView(props: Props) {
                     next[idx] = { ...next[idx]!, name: e.target.value }
                     setDraftPlayers(next)
                   }}
-                  disabled={p.deleted}
+                  disabled={p.deleted || (isAddRemove && !p.isNew)}
                 />
                 <input
                   className={
@@ -168,7 +189,7 @@ function SetupView(props: Props) {
                     next[idx] = { ...next[idx]!, stack: Number(e.target.value) }
                     setDraftPlayers(next)
                   }}
-                  disabled={p.deleted}
+                  disabled={p.deleted || (isAddRemove && !p.isNew)}
                 />
                 <button
                   className="danger"

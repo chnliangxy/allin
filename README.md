@@ -4,7 +4,7 @@
 
 An offline Texas Hold’em chip + session helper for live home games.
 
-![All-in screenshot](./public/demo.png)
+![All-in screenshot 01](./public/demo.png) ![All-in screenshot 02](./public/demo2.png)
 
 ## Features
 

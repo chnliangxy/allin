@@ -647,7 +647,7 @@ export function reducer(state: GameState, action: Action): GameState {
   }
 
   if (action.type === 'SETUP_SET_CONFIG') {
-    if (cleared.session && !cleared.session.endedAt) return { ...cleared, lastError: '本局游戏进行中，不能修改盲注设置' }
+    if (cleared.session && !cleared.session.endedAt) return { ...cleared, lastError: '本局游戏进行中，不能修改规则设置' }
     const smallBlind = clampInt(action.config.smallBlind, 0, 1_000_000)
     const bigBlind = clampInt(action.config.bigBlind, 0, 1_000_000)
     const ante = clampInt(action.config.ante, 0, 1_000_000)
@@ -656,9 +656,112 @@ export function reducer(state: GameState, action: Action): GameState {
   }
 
   if (action.type === 'SETUP_SET_PLAYERS') {
-    if (cleared.session && !cleared.session.endedAt) return { ...cleared, lastError: '本局游戏进行中，不能修改玩家' }
-    const max = Math.min(10, Math.max(2, action.players.length))
-    const players: Player[] = action.players.slice(0, max).map((p, idx) => ({
+    if (action.players.length < 2) return { ...cleared, lastError: '至少需要2名玩家' }
+    if (action.players.length > 10) return { ...cleared, lastError: '最多支持10名玩家' }
+
+    const hasActiveSession = !!cleared.session && !cleared.session.endedAt
+    if (hasActiveSession) {
+      if (cleared.phase !== 'setup') return { ...cleared, lastError: '只能在准备阶段新增/删除玩家' }
+
+      const requested = action.players.map((p, idx) => ({
+        name: p?.name?.trim() || `玩家${idx + 1}`,
+        stack: clampInt(p?.stack ?? 0, 0, 1_000_000_000),
+      }))
+
+      if (
+        requested.length === cleared.players.length &&
+        requested.every((p, idx) => p.name === cleared.players[idx]?.name && p.stack === cleared.players[idx]?.stack)
+      ) {
+        return cleared
+      }
+
+      const oldToNew = new Map<number, number>()
+      let j = 0
+      for (let i = 0; i < cleared.players.length && j < requested.length; i++) {
+        const next = requested[j]
+        const prev = cleared.players[i]
+        if (!next || !prev) continue
+        if (next.name === prev.name && next.stack === prev.stack) {
+          oldToNew.set(i, j)
+          j++
+        }
+      }
+
+      const newToOld = new Map<number, number>()
+      for (const [oldIdx, newIdx] of oldToNew) newToOld.set(newIdx, oldIdx)
+
+      const nextPlayers: Player[] = requested.map((p, idx) => ({
+        seat: idx,
+        name: p.name,
+        stack: p.stack,
+        streetBet: 0,
+        totalCommitted: 0,
+        status: p.stack > 0 ? 'active' : 'out',
+        acted: false,
+        holeCardsText: '',
+      }))
+
+      let dealerSeat = 0
+      const direct = oldToNew.get(cleared.dealerSeat)
+      if (direct !== undefined) {
+        dealerSeat = direct
+      } else {
+        let fallbackOld: number | undefined
+        for (let i = cleared.dealerSeat + 1; i < cleared.players.length; i++) {
+          if (oldToNew.has(i)) {
+            fallbackOld = i
+            break
+          }
+        }
+        if (fallbackOld === undefined) {
+          for (let i = cleared.dealerSeat - 1; i >= 0; i--) {
+            if (oldToNew.has(i)) {
+              fallbackOld = i
+              break
+            }
+          }
+        }
+        if (fallbackOld !== undefined) dealerSeat = oldToNew.get(fallbackOld) ?? 0
+      }
+      dealerSeat = clampInt(dealerSeat, 0, Math.max(0, nextPlayers.length - 1))
+
+      const session = cleared.session
+        ? {
+            ...cleared.session,
+            initialStacks: [] as number[],
+            rebuys: [] as number[],
+          }
+        : null
+
+      if (session) {
+        for (let idx = 0; idx < nextPlayers.length; idx++) {
+          const oldIdx = newToOld.get(idx)
+          if (oldIdx !== undefined) {
+            session.initialStacks[idx] = cleared.session!.initialStacks[oldIdx] ?? cleared.players[oldIdx]?.stack ?? 0
+            session.rebuys[idx] = cleared.session!.rebuys[oldIdx] ?? 0
+          } else {
+            session.initialStacks[idx] = nextPlayers[idx]?.stack ?? 0
+            session.rebuys[idx] = 0
+          }
+        }
+      }
+
+      return {
+        ...cleared,
+        phase: 'setup',
+        players: nextPlayers,
+        dealerSeat,
+        actionSeat: dealerSeat,
+        currentBet: 0,
+        boardCardsText: '',
+        winners: [],
+        rollbackStack: [],
+        session,
+        lastError: null,
+      }
+    }
+
+    const players: Player[] = action.players.map((p, idx) => ({
       seat: idx,
       name: p.name.trim() || `玩家${idx + 1}`,
       stack: clampInt(p.stack, 0, 1_000_000_000),

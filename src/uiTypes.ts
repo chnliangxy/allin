@@ -4,6 +4,8 @@ export type Route = 'home' | 'game' | 'summary' | 'history' | 'rules'
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
+export type UiStyle = 'text' | 'scene'
+
 export type PlayersSaveFeedback = { kind: 'success' | 'error'; text: string }
 
 export type ConfirmState = {

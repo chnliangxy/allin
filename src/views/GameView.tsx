@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { GameConfig, GameState, PlayerAction } from '../poker/engine'
-import type { ConfirmState, PlayersSaveFeedback } from '../uiTypes'
+import type { ConfirmState, PlayersSaveFeedback, UiStyle } from '../uiTypes'
 import SetupView from './SetupView'
 import TableView from './TableView'
 
@@ -9,7 +9,8 @@ type Props = {
   potSize: number
   sidePots: Array<{ amount: number; eligibleSeats: number[] }>
   setupKey: string
-  canEditSetup: boolean
+  canEditConfig: boolean
+  playersEditMode: 'full' | 'addRemove'
   canRollback: boolean
   onEndSession: () => void
   onCancelHand: () => void
@@ -17,6 +18,7 @@ type Props = {
   onRequestConfirm: (c: ConfirmState) => void
   continuousGame: boolean
   onToggleContinuous: () => void
+  uiStyle: UiStyle
   playersSaveFeedback: PlayersSaveFeedback | null
   onSetPlayersSaveFeedback: (v: PlayersSaveFeedback | null) => void
   onApplyConfig: (c: GameConfig) => void
@@ -34,6 +36,7 @@ type Props = {
 }
 
 function GameView(props: Props) {
+  const isScene = props.uiStyle === 'scene'
   const scoreboardRows = useMemo(() => {
     const rebuys = props.state.session?.rebuys ?? []
     return props.state.players
@@ -83,56 +86,137 @@ function GameView(props: Props) {
         </button>
       </div>
 
-      <div className="scoreboard">
-        <div className="scoreboard-table">
-          <div className="scoreboard-head">
-            <div>玩家</div>
-            <div>筹码</div>
-            <div>补码</div>
-            <div>积分</div>
-          </div>
-          {scoreboardRows.map((r) => (
-            <div className="scoreboard-row" key={r.seat}>
-              <div>
-                #{r.seat + 1} {r.name}
+      {!isScene || props.state.phase !== 'setup' ? (
+        isScene ? (
+          <details className="scene-collapsible">
+            <summary>玩家汇总</summary>
+            <div className="scoreboard">
+              <div className="scoreboard-table">
+                <div className="scoreboard-head">
+                  <div>玩家</div>
+                  <div>筹码</div>
+                  <div>补码</div>
+                  <div>积分</div>
+                </div>
+                {scoreboardRows.map((r) => (
+                  <div className="scoreboard-row" key={r.seat}>
+                    <div>
+                      #{r.seat + 1} {r.name}
+                    </div>
+                    <div>{r.score}</div>
+                    <div>{r.rebuy}</div>
+                    <div className={r.net >= 0 ? 'net pos' : 'net neg'}>{r.net}</div>
+                  </div>
+                ))}
               </div>
-              <div>{r.score}</div>
-              <div>{r.rebuy}</div>
-              <div className={r.net >= 0 ? 'net pos' : 'net neg'}>{r.net}</div>
             </div>
-          ))}
-        </div>
-      </div>
+          </details>
+        ) : (
+          <div className="scoreboard">
+            <div className="scoreboard-table">
+              <div className="scoreboard-head">
+                <div>玩家</div>
+                <div>筹码</div>
+                <div>补码</div>
+                <div>积分</div>
+              </div>
+              {scoreboardRows.map((r) => (
+                <div className="scoreboard-row" key={r.seat}>
+                  <div>
+                    #{r.seat + 1} {r.name}
+                  </div>
+                  <div>{r.score}</div>
+                  <div>{r.rebuy}</div>
+                  <div className={r.net >= 0 ? 'net pos' : 'net neg'}>{r.net}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      ) : null}
 
       {props.state.phase === 'setup' ? (
-        <SetupView
-          key={props.setupKey}
-          config={props.state.config}
-          players={props.state.players.map((p) => ({ name: p.name, stack: p.stack }))}
-          dealerSeat={props.state.dealerSeat}
-          canEditPlayers={props.canEditSetup}
-          playersSaveFeedback={props.playersSaveFeedback}
-          onSetPlayersSaveFeedback={props.onSetPlayersSaveFeedback}
-          onApplyConfig={props.onApplyConfig}
-          onApplyPlayers={props.onApplyPlayers}
-          onSetDealer={props.onSetDealer}
-          onStartHand={props.onStartHand}
-          onRebuy={props.onRebuy}
-          onReset={() => {
-            props.onRequestConfirm({
-              title: '重置',
-              message: '确认重置？将清空当前局面与玩家筹码记录。',
-              confirmText: '确认重置',
-              confirmVariant: 'danger',
-              onConfirm: props.onReset,
-            })
-          }}
-        />
+        isScene ? (
+          <>
+            <TableView
+              state={props.state}
+              potSize={props.potSize}
+              sidePots={props.sidePots}
+              uiStyle={props.uiStyle}
+              onAct={props.onAct}
+              onNextStreet={props.onNextStreet}
+              onSetBoard={props.onSetBoard}
+              onSetHole={props.onSetHole}
+              onSetWinners={props.onSetWinners}
+              onSettle={props.onSettle}
+              canRollback={props.canRollback}
+              onRequestRollback={() => {
+                props.onRequestConfirm({
+                  title: 'Rollback',
+                  message: '确认回滚上一次操作？',
+                  confirmText: '确认回滚',
+                  confirmVariant: 'danger',
+                  onConfirm: props.onRollback,
+                })
+              }}
+            />
+            <SetupView
+              key={props.setupKey}
+              config={props.state.config}
+              players={props.state.players.map((p) => ({ name: p.name, stack: p.stack }))}
+              dealerSeat={props.state.dealerSeat}
+              canEditConfig={props.canEditConfig}
+              playersEditMode={props.playersEditMode}
+              playersSaveFeedback={props.playersSaveFeedback}
+              onSetPlayersSaveFeedback={props.onSetPlayersSaveFeedback}
+              onApplyConfig={props.onApplyConfig}
+              onApplyPlayers={props.onApplyPlayers}
+              onSetDealer={props.onSetDealer}
+              onStartHand={props.onStartHand}
+              onRebuy={props.onRebuy}
+              onReset={() => {
+                props.onRequestConfirm({
+                  title: '重置',
+                  message: '确认重置？将清空当前局面与玩家筹码记录。',
+                  confirmText: '确认重置',
+                  confirmVariant: 'danger',
+                  onConfirm: props.onReset,
+                })
+              }}
+            />
+          </>
+        ) : (
+          <SetupView
+            key={props.setupKey}
+            config={props.state.config}
+            players={props.state.players.map((p) => ({ name: p.name, stack: p.stack }))}
+            dealerSeat={props.state.dealerSeat}
+            canEditConfig={props.canEditConfig}
+            playersEditMode={props.playersEditMode}
+            playersSaveFeedback={props.playersSaveFeedback}
+            onSetPlayersSaveFeedback={props.onSetPlayersSaveFeedback}
+            onApplyConfig={props.onApplyConfig}
+            onApplyPlayers={props.onApplyPlayers}
+            onSetDealer={props.onSetDealer}
+            onStartHand={props.onStartHand}
+            onRebuy={props.onRebuy}
+            onReset={() => {
+              props.onRequestConfirm({
+                title: '重置',
+                message: '确认重置？将清空当前局面与玩家筹码记录。',
+                confirmText: '确认重置',
+                confirmVariant: 'danger',
+                onConfirm: props.onReset,
+              })
+            }}
+          />
+        )
       ) : (
         <TableView
           state={props.state}
           potSize={props.potSize}
           sidePots={props.sidePots}
+          uiStyle={props.uiStyle}
           onAct={props.onAct}
           onNextStreet={props.onNextStreet}
           onSetBoard={props.onSetBoard}
@@ -142,7 +226,7 @@ function GameView(props: Props) {
           canRollback={props.canRollback}
           onRequestRollback={() => {
             props.onRequestConfirm({
-              title: 'Rollback',
+              title: '回滚操作',
               message: '确认回滚上一次操作？',
               confirmText: '确认回滚',
               confirmVariant: 'danger',
@@ -152,7 +236,7 @@ function GameView(props: Props) {
         />
       )}
 
-      {!props.canEditSetup && props.state.phase === 'setup' ? <div className="banner">本局进行中：盲注与玩家设置将锁定</div> : null}
+      {!props.canEditConfig && props.state.phase === 'setup' ? <div className="banner">本局进行中：规则设置将锁定（可新增/删除玩家）</div> : null}
     </div>
   )
 }
