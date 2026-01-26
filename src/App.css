@@ -417,19 +417,29 @@ button.danger {
   gap: 10px;
 }
 
-button.toggle {
-  border-color: color-mix(in srgb, currentColor 18%, transparent);
-  background: color-mix(in srgb, Canvas 92%, transparent);
+.turn-toast {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 16px 28px;
+  border-radius: 999px;
+  background: color-mix(in srgb, Canvas 96%, transparent);
+  color: color-mix(in srgb, #646cff 85%, currentColor);
+  border: 1px solid color-mix(in srgb, #646cff 55%, transparent);
+  font-size: 28px;
+  z-index: 900;
+  box-shadow: 0 6px 18px color-mix(in srgb, #000 24%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-button.toggle.off {
-  border-color: color-mix(in srgb, currentColor 14%, transparent);
-  opacity: 0.75;
-}
-
-button.toggle.on {
-  border-color: color-mix(in srgb, #00c853 60%, transparent);
-  background: color-mix(in srgb, #00c853 22%, transparent);
+.turn-toast-line1,
+.turn-toast-line2 {
+  white-space: nowrap;
 }
 
 .summary-table {

@@ -28,6 +28,11 @@ type ConfirmState = {
   onConfirm: () => void
 }
 
+type TurnToastInfo = {
+  seat: number
+  name: string
+}
+
 function App() {
   const [state, dispatch] = useReducer(reducer, undefined, createInitialState)
   const [route, setRoute] = useState<Route>(() => {
@@ -41,12 +46,15 @@ function App() {
   const pendingSnapshotRef = useRef<GameState | null>(null)
   const reconnectTimerRef = useRef<number | null>(null)
   const heartbeatTimerRef = useRef<number | null>(null)
+  const turnToastTimerRef = useRef<number | null>(null)
+  const lastActionSeatRef = useRef<number | null>(null)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('connecting')
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [savedFileName, setSavedFileName] = useState<string | null>(null)
   const [playersSaveFeedback, setPlayersSaveFeedback] = useState<PlayersSaveFeedback | null>(null)
   const [confirm, setConfirm] = useState<ConfirmState | null>(null)
   const [continuousGame, setContinuousGame] = useState(false)
+  const [turnToast, setTurnToast] = useState<TurnToastInfo | null>(null)
 
   const potSize = useMemo(() => computePotSize(state.players), [state.players])
   const sidePots = useMemo(() => computeSidePots(state.players), [state.players])
@@ -64,6 +72,33 @@ function App() {
     localStorage.setItem('allin.route', route)
     routeRef.current = route
   }, [route])
+
+  useEffect(() => {
+    if (state.phase !== 'hand') {
+      lastActionSeatRef.current = null
+      if (turnToastTimerRef.current !== null) {
+        window.clearTimeout(turnToastTimerRef.current)
+        turnToastTimerRef.current = null
+      }
+      setTurnToast(null)
+      return
+    }
+    const seat = state.actionSeat
+    if (seat < 0 || seat >= state.players.length) return
+    if (lastActionSeatRef.current === seat) return
+    lastActionSeatRef.current = seat
+    if (turnToastTimerRef.current !== null) {
+      window.clearTimeout(turnToastTimerRef.current)
+      turnToastTimerRef.current = null
+    }
+    const player = state.players[seat]
+    const name = player?.name || `玩家${seat + 1}`
+    setTurnToast({ seat, name })
+    turnToastTimerRef.current = window.setTimeout(() => {
+      setTurnToast(null)
+      turnToastTimerRef.current = null
+    }, 2000)
+  }, [state.phase, state.actionSeat, state.players])
 
   useEffect(() => {
     if (typeof WebSocket === 'undefined') return
@@ -334,6 +369,12 @@ function App() {
       </header>
 
       {state.lastError ? <div className="banner error">{state.lastError}</div> : null}
+      {turnToast ? (
+        <div className="turn-toast">
+          <span className="turn-toast-line1">轮到：#{turnToast.seat + 1}</span>
+          <span className="turn-toast-line2">{turnToast.name}</span>
+        </div>
+      ) : null}
 
       <main className="main">
         {route === 'home' ? (
@@ -1045,9 +1086,7 @@ function GameView(props: {
         >
           结束整局游戏
         </button>
-        <button className={props.continuousGame ? 'toggle on' : 'toggle off'} aria-pressed={props.continuousGame} onClick={props.onToggleContinuous}>
-          连续游戏：{props.continuousGame ? '开' : '关'}
-        </button>
+        <button onClick={props.onToggleContinuous}>连续游戏：{props.continuousGame ? '开' : '关'}</button>
       </div>
 
       <div className="scoreboard">
