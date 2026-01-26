@@ -1,13 +1,14 @@
 import { useRef, useState, type CSSProperties } from 'react'
 import { minRaiseTo, toCall, type GameState, type PlayerAction } from '../poker/engine'
 import { computeWinnersFromInputs, type HandRank } from '../poker/handEval'
-import type { UiStyle } from '../uiTypes'
+import type { BoundPlayer, UiStyle } from '../uiTypes'
 
 type Props = {
   state: GameState
   potSize: number
   sidePots: Array<{ amount: number; eligibleSeats: number[] }>
   uiStyle: UiStyle
+  boundPlayer: BoundPlayer | null
   onAct: (seat: number, action: PlayerAction) => void
   onNextStreet: () => void
   onSetBoard: (text: string) => void
@@ -30,6 +31,7 @@ function TableView(props: Props) {
 
   const actor = state.players[state.actionSeat]
   const actorToCall = actor ? toCall(state, actor.seat) : 0
+  const canAct = !props.boundPlayer || (actor ? actor.seat === props.boundPlayer.seat : false)
 
   const eligibleShowdown = state.players.filter((p) => p.status !== 'folded' && p.status !== 'out')
 
@@ -276,9 +278,12 @@ function TableView(props: Props) {
                 min={0}
                 defaultValue={suggestedBetTo}
                 ref={betToRef}
+                disabled={!canAct}
               />
               <button
+                disabled={!canAct}
                 onClick={() => {
+                  if (!canAct) return
                   const v = Number(betToRef.current?.value ?? suggestedBetTo)
                   props.onAct(actor.seat, { type: 'BET_TO', betTo: v })
                 }}
@@ -286,11 +291,32 @@ function TableView(props: Props) {
                 Bet/Raise
               </button>
             </div>
-            <button onClick={() => props.onAct(actor.seat, actorToCall === 0 ? { type: 'CHECK' } : { type: 'CALL' })}>
+            <button
+              disabled={!canAct}
+              onClick={() => {
+                if (!canAct) return
+                props.onAct(actor.seat, actorToCall === 0 ? { type: 'CHECK' } : { type: 'CALL' })
+              }}
+            >
               {actorToCall === 0 ? 'Check' : `Call ${actorToCall}`}
             </button>
-            <button onClick={() => props.onAct(actor.seat, { type: 'ALLIN' })}>All-in ({actor.stack})</button>
-            <button className="danger" onClick={() => props.onAct(actor.seat, { type: 'FOLD' })}>
+            <button
+              disabled={!canAct}
+              onClick={() => {
+                if (!canAct) return
+                props.onAct(actor.seat, { type: 'ALLIN' })
+              }}
+            >
+              All-in ({actor.stack})
+            </button>
+            <button
+              className="danger"
+              disabled={!canAct}
+              onClick={() => {
+                if (!canAct) return
+                props.onAct(actor.seat, { type: 'FOLD' })
+              }}
+            >
               Fold
             </button>
           </div>

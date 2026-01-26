@@ -170,6 +170,11 @@ button.danger {
   border-color: color-mix(in srgb, #ff4d4f 45%, transparent);
 }
 
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .players-edit {
   display: flex;
   flex-direction: column;
@@ -178,7 +183,7 @@ button.danger {
 
 .player-edit {
   display: grid;
-  grid-template-columns: 56px 1fr 140px 90px;
+  grid-template-columns: 56px 1fr 140px 90px 90px;
   gap: 8px;
   align-items: center;
 }
@@ -894,6 +899,9 @@ button.danger {
     grid-auto-rows: auto;
   }
   .player-edit .stack {
+    grid-column: 1 / -1;
+  }
+  .player-edit .bind {
     grid-column: 1 / -1;
   }
   .player-edit .danger {
