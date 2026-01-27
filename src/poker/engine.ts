@@ -78,6 +78,7 @@ export type PlayerAction =
 export type Action =
   | { type: 'SETUP_SET_CONFIG'; config: GameConfig }
   | { type: 'SETUP_SET_PLAYERS'; players: Array<{ name: string; stack: number }> }
+  | { type: 'SETUP_MOVE_PLAYER'; from: number; to: number }
   | { type: 'SETUP_SET_DEALER'; dealerSeat: number }
   | { type: 'SESSION_START'; id: string; startedAt: number }
   | { type: 'SESSION_END'; endedAt: number }
@@ -91,6 +92,7 @@ export type Action =
   | { type: 'SET_WINNERS'; seats: number[] }
   | { type: 'SETTLE_HAND' }
   | { type: 'REBUY'; seat: number; amount: number }
+  | { type: 'RESET_SESSION' }
   | { type: 'RESET_GAME' }
   | { type: 'SYNC_SET_SNAPSHOT'; state: GameState }
 
@@ -142,6 +144,27 @@ function clampInt(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min
   const x = Math.trunc(n)
   return Math.max(min, Math.min(max, x))
+}
+
+function arrayMove<T>(arr: T[], from: number, to: number): T[] {
+  if (from === to) return arr.slice()
+  const next = arr.slice()
+  const [item] = next.splice(from, 1)
+  next.splice(to, 0, item!)
+  return next
+}
+
+function moveIndex(idx: number, from: number, to: number): number {
+  if (idx === from) return to
+  if (from < to) {
+    if (idx > from && idx <= to) return idx - 1
+    return idx
+  }
+  if (to < from) {
+    if (idx >= to && idx < from) return idx + 1
+    return idx
+  }
+  return idx
 }
 
 function isEligibleForShowdown(p: Player): boolean {
@@ -391,10 +414,6 @@ function applyPlayerAction(state: GameState, seat: number, action: PlayerAction)
 
   if (action.type === 'CHECK' && toCall !== 0) return { ...state, lastError: '当前不能check，需要跟注或弃牌' }
 
-  if (action.type === 'BET_TO' && action.betTo <= state.currentBet) {
-    return { ...state, lastError: '下注/加注金额需要大于当前下注' }
-  }
-
   const players = [...state.players]
 
   const updateActor = (patch: Partial<Player>) => {
@@ -434,11 +453,26 @@ function applyPlayerAction(state: GameState, seat: number, action: PlayerAction)
     }
   } else if (action.type === 'BET_TO') {
     const p = players[seat]!
-    const delta = action.betTo - p.streetBet
+    const rawBetTo = clampInt(action.betTo, 0, 1_000_000_000)
+    const maxBetTo = p.streetBet + p.stack
+    const targetBetTo = clampInt(rawBetTo, 0, maxBetTo)
+
+    if (rawBetTo <= state.currentBet && targetBetTo <= state.currentBet) {
+      return { ...state, lastError: '下注/加注金额需要大于当前下注' }
+    }
+
+    if (targetBetTo <= p.streetBet) {
+      return { ...state, lastError: '下注金额需要大于本街已下注' }
+    }
+
+    const delta = targetBetTo - p.streetBet
     pay(delta)
     updateActor({ acted: true })
-    currentBet = Math.max(currentBet, action.betTo)
-    raised = true
+    const actualBetTo = players[seat]!.streetBet
+    if (actualBetTo > currentBet) {
+      currentBet = actualBetTo
+      raised = true
+    }
   }
 
   if (countRemaining(players) <= 1) {
@@ -599,6 +633,45 @@ function rollbackOnce(state: GameState): GameState {
 export function reducer(state: GameState, action: Action): GameState {
   const cleared = normalizeAfterError(state)
 
+  if (action.type === 'RESET_SESSION') {
+    const baseline =
+      cleared.session?.initialStacks?.length === cleared.players.length
+        ? cleared.session.initialStacks
+        : cleared.players.map((p) => p.stack)
+
+    const players = cleared.players.map((p, idx) => {
+      const stack = clampInt(baseline[idx] ?? p.stack, 0, 1_000_000_000)
+      const status: PlayerStatus = stack > 0 ? 'active' : 'out'
+      return {
+        ...p,
+        seat: idx,
+        stack,
+        streetBet: 0,
+        totalCommitted: 0,
+        status,
+        acted: false,
+        holeCardsText: '',
+      }
+    })
+
+    const dealerSeat = clampInt(cleared.dealerSeat, 0, Math.max(0, players.length - 1))
+
+    return {
+      ...cleared,
+      phase: 'setup',
+      players,
+      dealerSeat,
+      actionSeat: dealerSeat,
+      street: 'preflop',
+      currentBet: 0,
+      boardCardsText: '',
+      winners: [],
+      rollbackStack: [],
+      session: null,
+      lastError: null,
+    }
+  }
+
   if (action.type === 'RESET_GAME') return createInitialState()
   if (action.type === 'SYNC_SET_SNAPSHOT') {
     return {
@@ -668,11 +741,15 @@ export function reducer(state: GameState, action: Action): GameState {
         stack: clampInt(p?.stack ?? 0, 0, 1_000_000_000),
       }))
 
-      if (
-        requested.length === cleared.players.length &&
-        requested.every((p, idx) => p.name === cleared.players[idx]?.name && p.stack === cleared.players[idx]?.stack)
-      ) {
-        return cleared
+      if (requested.length === cleared.players.length) {
+        for (let idx = 0; idx < requested.length; idx++) {
+          const r = requested[idx]
+          const cur = cleared.players[idx]
+          if (!r || !cur) continue
+          if (r.stack !== cur.stack) return { ...cleared, lastError: '本局游戏进行中，不能修改现有玩家筹码（可通过补码调整）' }
+        }
+        const players = cleared.players.map((p, idx) => ({ ...p, seat: idx, name: requested[idx]?.name ?? p.name }))
+        return { ...cleared, players, lastError: null }
       }
 
       const oldToNew = new Map<number, number>()
@@ -772,6 +849,41 @@ export function reducer(state: GameState, action: Action): GameState {
       holeCardsText: '',
     }))
     return { ...cleared, players, dealerSeat: 0, phase: 'setup', rollbackStack: [] }
+  }
+
+  if (action.type === 'SETUP_MOVE_PLAYER') {
+    if (cleared.phase !== 'setup') return { ...cleared, lastError: '只能在准备阶段调整玩家顺序' }
+    const len = cleared.players.length
+    if (len <= 1) return cleared
+    const from = clampInt(action.from, 0, len - 1)
+    const to = clampInt(action.to, 0, len - 1)
+    if (from === to) return cleared
+
+    const moved = arrayMove(cleared.players, from, to)
+    const players = moved.map((p, idx) => ({ ...p, seat: idx }))
+    const dealerSeat = clampInt(moveIndex(cleared.dealerSeat, from, to), 0, len - 1)
+    const session = cleared.session
+      ? {
+          ...cleared.session,
+          initialStacks: cleared.session.initialStacks.length === len ? arrayMove(cleared.session.initialStacks, from, to) : cleared.session.initialStacks,
+          rebuys: cleared.session.rebuys.length === len ? arrayMove(cleared.session.rebuys, from, to) : cleared.session.rebuys,
+        }
+      : null
+
+    return {
+      ...cleared,
+      phase: 'setup',
+      street: 'preflop',
+      currentBet: 0,
+      players,
+      dealerSeat,
+      actionSeat: dealerSeat,
+      boardCardsText: '',
+      winners: [],
+      rollbackStack: [],
+      session,
+      lastError: null,
+    }
   }
 
   if (action.type === 'SETUP_SET_DEALER') {

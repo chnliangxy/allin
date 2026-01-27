@@ -147,7 +147,7 @@ function App() {
     setPlayersSaveFeedback(null)
     setSaveStatus('idle')
     setSavedFileName(null)
-    dispatchWithSync({ type: 'RESET_GAME' })
+    dispatchWithSync({ type: 'RESET_SESSION' })
     setRoute('game')
   }
 
@@ -324,6 +324,7 @@ function App() {
             onSetPlayersSaveFeedback={setPlayersSaveFeedback}
             onApplyConfig={(c) => dispatchWithSync({ type: 'SETUP_SET_CONFIG', config: c })}
             onApplyPlayers={(ps) => dispatchWithSync({ type: 'SETUP_SET_PLAYERS', players: ps })}
+            onMovePlayer={(from, to) => dispatchWithSync({ type: 'SETUP_MOVE_PLAYER', from, to })}
             onSetDealer={(s) => dispatchWithSync({ type: 'SETUP_SET_DEALER', dealerSeat: s })}
             onStartHand={startHandWithSession}
             onRebuy={(seat, amount) => dispatchWithSync({ type: 'REBUY', seat, amount })}

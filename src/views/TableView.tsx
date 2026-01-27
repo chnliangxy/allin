@@ -32,6 +32,12 @@ function TableView(props: Props) {
   const actor = state.players[state.actionSeat]
   const actorToCall = actor ? toCall(state, actor.seat) : 0
   const canAct = !props.boundPlayer || (actor ? actor.seat === props.boundPlayer.seat : false)
+  const actorMaxBetTo = actor ? actor.streetBet + actor.stack : 0
+  const defaultBetTo = actor ? Math.min(suggestedBetTo, actorMaxBetTo) : suggestedBetTo
+  const canRaise = !!actor && actorMaxBetTo > state.currentBet
+  const canBetOrRaise = canAct && canRaise
+  const callPay = actor ? Math.min(actorToCall, actor.stack) : 0
+  const callIsAllIn = !!actor && actorToCall > 0 && actorToCall >= actor.stack
 
   const eligibleShowdown = state.players.filter((p) => p.status !== 'folded' && p.status !== 'out')
 
@@ -276,16 +282,19 @@ function TableView(props: Props) {
                 key={`${state.street}-${state.currentBet}`}
                 type="number"
                 min={0}
-                defaultValue={suggestedBetTo}
+                max={actorMaxBetTo}
+                defaultValue={defaultBetTo}
                 ref={betToRef}
-                disabled={!canAct}
+                disabled={!canBetOrRaise}
               />
               <button
-                disabled={!canAct}
+                disabled={!canBetOrRaise}
                 onClick={() => {
                   if (!canAct) return
-                  const v = Number(betToRef.current?.value ?? suggestedBetTo)
-                  props.onAct(actor.seat, { type: 'BET_TO', betTo: v })
+                  const raw = Number(betToRef.current?.value ?? defaultBetTo)
+                  const v = Number.isFinite(raw) ? Math.trunc(raw) : defaultBetTo
+                  const capped = Math.max(0, Math.min(actorMaxBetTo, v))
+                  props.onAct(actor.seat, { type: 'BET_TO', betTo: capped })
                 }}
               >
                 Bet/Raise
@@ -295,10 +304,18 @@ function TableView(props: Props) {
               disabled={!canAct}
               onClick={() => {
                 if (!canAct) return
-                props.onAct(actor.seat, actorToCall === 0 ? { type: 'CHECK' } : { type: 'CALL' })
+                if (actorToCall === 0) {
+                  props.onAct(actor.seat, { type: 'CHECK' })
+                  return
+                }
+                if (callIsAllIn) {
+                  props.onAct(actor.seat, { type: 'ALLIN' })
+                  return
+                }
+                props.onAct(actor.seat, { type: 'CALL' })
               }}
             >
-              {actorToCall === 0 ? 'Check' : `Call ${actorToCall}`}
+              {actorToCall === 0 ? 'Check' : callIsAllIn ? `Call ${callPay} (All-in)` : `Call ${actorToCall}`}
             </button>
             <button
               disabled={!canAct}
