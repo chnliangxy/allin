@@ -25,6 +25,7 @@ type Props = {
   onSetPlayersSaveFeedback: (v: PlayersSaveFeedback | null) => void
   onApplyConfig: (c: GameConfig) => void
   onApplyPlayers: (ps: Array<{ name: string; stack: number }>) => void
+  onMovePlayer: (from: number, to: number) => void
   onSetDealer: (s: number) => void
   onStartHand: () => void
   onRebuy: (seat: number, amount: number) => void
@@ -176,6 +177,7 @@ function GameView(props: Props) {
               onSetPlayersSaveFeedback={props.onSetPlayersSaveFeedback}
               onApplyConfig={props.onApplyConfig}
               onApplyPlayers={props.onApplyPlayers}
+              onMovePlayer={props.onMovePlayer}
               onSetDealer={props.onSetDealer}
               onStartHand={props.onStartHand}
               onRebuy={props.onRebuy}
@@ -204,6 +206,7 @@ function GameView(props: Props) {
             onSetPlayersSaveFeedback={props.onSetPlayersSaveFeedback}
             onApplyConfig={props.onApplyConfig}
             onApplyPlayers={props.onApplyPlayers}
+            onMovePlayer={props.onMovePlayer}
             onSetDealer={props.onSetDealer}
             onStartHand={props.onStartHand}
             onRebuy={props.onRebuy}

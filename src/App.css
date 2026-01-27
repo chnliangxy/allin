@@ -186,7 +186,7 @@ button:disabled {
 
 .player-edit {
   display: grid;
-  grid-template-columns: 56px 1fr 140px 90px 90px;
+  grid-template-columns: 56px minmax(0, 1fr) 110px 78px 78px;
   gap: 8px;
   align-items: center;
 }
@@ -194,6 +194,42 @@ button:disabled {
 .player-edit .seat {
   font-weight: 700;
   opacity: 0.85;
+}
+
+.player-edit input,
+.player-edit button {
+  box-sizing: border-box;
+}
+
+.player-edit input {
+  min-width: 0;
+}
+
+.player-edit .name {
+  min-width: 0;
+}
+
+.player-edit .stack {
+  width: 100%;
+}
+
+.player-edit .bind,
+.player-edit .danger {
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.player-edit button.bind.primary {
+  background-color: #00c853;
+  border-color: #00c853;
+  color: #ffffff;
+}
+
+.player-edit button.bind.primary:hover {
+  border-color: color-mix(in srgb, #00c853 70%, #646cff);
 }
 
 .rebuy {
@@ -898,17 +934,15 @@ button:disabled {
     grid-template-columns: 1fr;
   }
   .player-edit {
-    grid-template-columns: 56px 1fr;
-    grid-auto-rows: auto;
+    grid-template-columns: 44px minmax(0, 1fr) 88px 68px 68px;
+    gap: 6px;
   }
-  .player-edit .stack {
-    grid-column: 1 / -1;
+  .player-edit input {
+    padding: 8px 10px;
   }
-  .player-edit .bind {
-    grid-column: 1 / -1;
-  }
-  .player-edit .danger {
-    grid-column: 1 / -1;
+  .player-edit button {
+    padding: 0.5em 0.9em;
+    white-space: nowrap;
   }
   .winner-grid {
     grid-template-columns: 1fr;
