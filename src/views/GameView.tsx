@@ -34,7 +34,8 @@ type Props = {
   onNextStreet: () => void
   onSetBoard: (text: string) => void
   onSetHole: (seat: number, text: string) => void
-  onSetWinners: (seats: number[]) => void
+  onSetPotWinners: (potIndex: number, seats: number[]) => void
+  onSetPotWinnersAll: (potWinners: number[][]) => void
   onSettle: () => void
 }
 
@@ -151,7 +152,8 @@ function GameView(props: Props) {
               onNextStreet={props.onNextStreet}
               onSetBoard={props.onSetBoard}
               onSetHole={props.onSetHole}
-              onSetWinners={props.onSetWinners}
+              onSetPotWinners={props.onSetPotWinners}
+              onSetPotWinnersAll={props.onSetPotWinnersAll}
               onSettle={props.onSettle}
               canRollback={props.canRollback}
               onRequestRollback={() => {
@@ -232,7 +234,8 @@ function GameView(props: Props) {
           onNextStreet={props.onNextStreet}
           onSetBoard={props.onSetBoard}
           onSetHole={props.onSetHole}
-          onSetWinners={props.onSetWinners}
+          onSetPotWinners={props.onSetPotWinners}
+          onSetPotWinnersAll={props.onSetPotWinnersAll}
           onSettle={props.onSettle}
           canRollback={props.canRollback}
           onRequestRollback={() => {
