@@ -1,6 +1,6 @@
 import { useRef, useState, type CSSProperties } from 'react'
 import { minRaiseTo, toCall, type GameState, type PlayerAction } from '../poker/engine'
-import { computeWinnersFromInputs, type HandRank } from '../poker/handEval'
+import { computePotWinnersFromInputs, type HandRank } from '../poker/handEval'
 import type { BoundPlayer, UiStyle } from '../uiTypes'
 
 type Props = {
@@ -13,7 +13,8 @@ type Props = {
   onNextStreet: () => void
   onSetBoard: (text: string) => void
   onSetHole: (seat: number, text: string) => void
-  onSetWinners: (seats: number[]) => void
+  onSetPotWinners: (potIndex: number, seats: number[]) => void
+  onSetPotWinnersAll: (potWinners: number[][]) => void
   onSettle: () => void
   canRollback: boolean
   onRequestRollback: () => void
@@ -40,6 +41,13 @@ function TableView(props: Props) {
   const callIsAllIn = !!actor && actorToCall > 0 && actorToCall >= actor.stack
 
   const eligibleShowdown = state.players.filter((p) => p.status !== 'folded' && p.status !== 'out')
+  const canSettle =
+    props.sidePots.length > 0 &&
+    props.sidePots.every((p, idx) => p.eligibleSeats.length <= 1 || (state.potWinners[idx]?.length ?? 0) > 0)
+
+  const stageText = state.phase === 'showdown' ? 'Showdown' : streetLabel(state.street)
+  const shouldFlashStage = state.phase === 'hand' || state.phase === 'showdown'
+  const stageFlashKey = shouldFlashStage ? `${state.phase}-${state.street}` : 'static'
 
   const boardInput = (
     <div className={isScene ? 'scene-board' : 'field'}>
@@ -77,7 +85,9 @@ function TableView(props: Props) {
                 <div className="scene-kpis">
                   <div className="kpi">
                     <div className="kpi-label">阶段</div>
-                    <div className="kpi-value">{streetLabel(state.street)}</div>
+                    <div key={stageFlashKey} className={shouldFlashStage ? 'kpi-value stage-flash' : 'kpi-value'}>
+                      {stageText}
+                    </div>
                   </div>
                   <div className="kpi">
                     <div className="kpi-label">底池</div>
@@ -121,7 +131,9 @@ function TableView(props: Props) {
 
           <div className="scene-table">
             <div className="scene-center-min">
-              <div className="scene-center-street">{streetLabel(state.street)}</div>
+              <div key={stageFlashKey} className={shouldFlashStage ? 'scene-center-street stage-flash' : 'scene-center-street'}>
+                {stageText}
+              </div>
               <div className="scene-center-pot">{props.potSize}</div>
               <div className="scene-center-bet">{state.currentBet}</div>
             </div>
@@ -193,7 +205,9 @@ function TableView(props: Props) {
             <div className="summary-left">
               <div className="kpi">
                 <div className="kpi-label">阶段</div>
-                <div className="kpi-value">{streetLabel(state.street)}</div>
+                <div key={stageFlashKey} className={shouldFlashStage ? 'kpi-value stage-flash' : 'kpi-value'}>
+                  {stageText}
+                </div>
               </div>
               <div className="kpi">
                 <div className="kpi-label">底池</div>
@@ -345,42 +359,58 @@ function TableView(props: Props) {
           <div className="panel-title">摊牌与结算</div>
           {!isScene ? boardInput : null}
 
-          <div className="winners">
-            <div className="label">胜者（可多选用于平分底池）</div>
-            <div className="winner-grid">
-              {eligibleShowdown.map((p) => {
-                const checked = state.winners.includes(p.seat)
-                return (
-                  <label key={p.seat} className="winner">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={(e) => {
-                        const next = e.target.checked
-                          ? [...state.winners, p.seat]
-                          : state.winners.filter((s: number) => s !== p.seat)
-                        props.onSetWinners(next)
-                      }}
-                    />
-                    #{p.seat + 1} {p.name}
-                  </label>
-                )
-              })}
-            </div>
-          </div>
+          {props.sidePots.map((pot, potIndex) => {
+            const title = potIndex === 0 ? '主池' : `边池${potIndex}`
+            const autoSeat = pot.eligibleSeats.length === 1 ? pot.eligibleSeats[0]! : null
+            const selected = state.potWinners[potIndex] ?? []
+            return (
+              <div className="winners" key={potIndex}>
+                <div className="label">
+                  {title}（{pot.amount}）胜者（可多选用于平分）
+                </div>
+                {autoSeat !== null ? (
+                  <div className="banner">
+                    自动分配：#{autoSeat + 1} {state.players[autoSeat]?.name ?? `玩家${autoSeat + 1}`}
+                  </div>
+                ) : (
+                  <div className="winner-grid">
+                    {pot.eligibleSeats.map((seat) => {
+                      const p = state.players[seat]
+                      if (!p) return null
+                      const checked = selected.includes(seat)
+                      return (
+                        <label key={seat} className="winner">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const next = e.target.checked ? [...selected, seat] : selected.filter((s) => s !== seat)
+                              props.onSetPotWinners(potIndex, next)
+                            }}
+                          />
+                          #{seat + 1} {p.name}
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
 
           {autoEvalError ? <div className="banner error">{autoEvalError}</div> : null}
 
           <div className="actions">
             <button
               onClick={() => {
-                const res = computeWinnersFromInputs({
+                const res = computePotWinnersFromInputs({
                   boardText: state.boardCardsText,
                   playerHoles: eligibleShowdown.map((p) => ({
                     seat: p.seat,
                     holeText: p.holeCardsText,
                     folded: p.status === 'folded' || p.status === 'out',
                   })),
+                  pots: props.sidePots,
                 })
                 if (res.error) {
                   setAutoEvalError(res.error)
@@ -389,12 +419,12 @@ function TableView(props: Props) {
                 }
                 setAutoEvalError(null)
                 setRankMap(res.ranks)
-                props.onSetWinners(res.winners)
+                props.onSetPotWinnersAll(res.potWinners)
               }}
             >
               自动判定胜者
             </button>
-            <button className="primary" disabled={state.winners.length === 0} onClick={props.onSettle}>
+            <button className="primary" disabled={!canSettle} onClick={props.onSettle}>
               结算发筹码
             </button>
           </div>

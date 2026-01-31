@@ -264,3 +264,52 @@ export function computeWinnersFromInputs(args: {
   return { winners, ranks, error: null }
 }
 
+export function computePotWinnersFromInputs(args: {
+  boardText: string
+  playerHoles: Array<{ seat: number; holeText: string; folded: boolean }>
+  pots: Array<{ eligibleSeats: number[] }>
+}): { potWinners: number[][]; ranks: Map<number, HandRank>; error: string | null } {
+  const boardParsed = parseCardsText(args.boardText)
+  if (boardParsed.error) return { potWinners: [], ranks: new Map(), error: boardParsed.error }
+  if (boardParsed.cards.length !== 5) return { potWinners: [], ranks: new Map(), error: '公共牌需要正好5张' }
+
+  const board = boardParsed.cards
+  const ranks = new Map<number, HandRank>()
+
+  for (const p of args.playerHoles) {
+    if (p.folded) continue
+    const holeParsed = parseCardsText(p.holeText)
+    if (holeParsed.error) return { potWinners: [], ranks: new Map(), error: `玩家${p.seat + 1}：${holeParsed.error}` }
+    if (holeParsed.cards.length !== 2) return { potWinners: [], ranks: new Map(), error: `玩家${p.seat + 1}：手牌需要正好2张` }
+
+    const all = [...board, ...holeParsed.cards]
+    const seen = new Set<string>()
+    for (const c of all) {
+      if (seen.has(c.text)) return { potWinners: [], ranks: new Map(), error: '公共牌与手牌存在重复牌' }
+      seen.add(c.text)
+    }
+
+    ranks.set(p.seat, evaluateBestOf7(all))
+  }
+
+  const potWinners = args.pots.map((pot) => {
+    if (pot.eligibleSeats.length === 1) return [pot.eligibleSeats[0]!] as number[]
+    const seats = pot.eligibleSeats.filter((s) => ranks.has(s))
+    let best: HandRank | null = null
+    for (const s of seats) {
+      const r = ranks.get(s)!
+      if (!best || compareHands(r, best) > 0) best = r
+    }
+    if (!best) return [] as number[]
+    return seats
+      .filter((s) => compareHands(ranks.get(s)!, best) === 0)
+      .sort((a, b) => a - b)
+  })
+
+  if (potWinners.some((w, idx) => args.pots[idx]?.eligibleSeats.length > 1 && w.length === 0)) {
+    return { potWinners: [], ranks, error: '没有可比对的玩家' }
+  }
+
+  return { potWinners, ranks, error: null }
+}
+

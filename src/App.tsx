@@ -333,7 +333,8 @@ function App() {
             onNextStreet={() => dispatchWithSync({ type: 'NEXT_STREET' })}
             onSetBoard={(text) => dispatchWithSync({ type: 'SET_BOARD', text })}
             onSetHole={(seat, text) => dispatchWithSync({ type: 'SET_HOLE', seat, text })}
-            onSetWinners={(seats) => dispatchWithSync({ type: 'SET_WINNERS', seats })}
+            onSetPotWinners={(potIndex, seats) => dispatchWithSync({ type: 'SET_POT_WINNERS', potIndex, seats })}
+            onSetPotWinnersAll={(potWinners) => dispatchWithSync({ type: 'SET_POT_WINNERS_ALL', potWinners })}
             onSettle={settleHandWithMaybeContinue}
           />
         )}

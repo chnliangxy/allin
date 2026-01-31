@@ -690,6 +690,43 @@ button:disabled {
   border-color: color-mix(in srgb, #00c853 55%, transparent);
 }
 
+@keyframes turn-toast-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -56%) scale(0.86);
+    filter: blur(10px) brightness(1.25);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.06);
+    filter: blur(0px) brightness(1.55);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    filter: blur(0px) brightness(1);
+  }
+}
+
+@keyframes turn-toast-fade {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    filter: blur(0px) brightness(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -44%) scale(0.985);
+    filter: blur(6px) brightness(1.2);
+  }
+}
+
+@keyframes turn-toast-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .turn-toast {
   position: fixed;
   top: 50%;
@@ -697,22 +734,204 @@ button:disabled {
   transform: translate(-50%, -50%);
   padding: 16px 28px;
   border-radius: 999px;
-  background: color-mix(in srgb, Canvas 96%, transparent);
-  color: color-mix(in srgb, #646cff 85%, currentColor);
-  border: 1px solid color-mix(in srgb, #646cff 55%, transparent);
+  background: color-mix(in srgb, Canvas 92%, transparent);
+  color: color-mix(in srgb, #646cff 88%, currentColor);
+  border: 1px solid color-mix(in srgb, #646cff 28%, transparent);
   font-size: 28px;
   z-index: 900;
-  box-shadow: 0 6px 18px color-mix(in srgb, #000 24%, transparent);
+  box-shadow: 0 12px 34px color-mix(in srgb, #000 42%, transparent);
+  backdrop-filter: blur(14px);
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
   gap: 8px;
+  pointer-events: none;
+  text-shadow: 0 0 12px color-mix(in srgb, #646cff 45%, transparent);
+  animation:
+    turn-toast-pop 240ms cubic-bezier(0.2, 1, 0.3, 1) both,
+    turn-toast-fade 280ms ease-in 1.65s forwards;
+}
+
+.turn-toast::before {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border-radius: 999px;
+  background: conic-gradient(
+    from 210deg,
+    color-mix(in srgb, #00c853 60%, transparent),
+    color-mix(in srgb, #646cff 70%, transparent),
+    color-mix(in srgb, #00c853 60%, transparent)
+  );
+  filter: blur(16px);
+  opacity: 0.65;
+  z-index: -1;
+  animation: turn-toast-rotate 1.2s linear infinite;
+}
+
+.turn-toast::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, #646cff 28%, transparent),
+    transparent 70%
+  );
+  filter: blur(8px);
+  opacity: 0.85;
+  z-index: -1;
 }
 
 .turn-toast-line1,
 .turn-toast-line2 {
   white-space: nowrap;
+}
+
+@keyframes stage-flash {
+  0% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1) saturate(1) hue-rotate(0deg);
+    text-shadow: none;
+  }
+  2% {
+    transform: scale(1.18) rotate(-1deg);
+    filter: brightness(3) saturate(1.8) hue-rotate(10deg)
+      drop-shadow(0 0 10px color-mix(in srgb, #646cff 85%, transparent))
+      drop-shadow(0 0 22px color-mix(in srgb, #00c853 70%, transparent));
+    text-shadow: 0 0 12px color-mix(in srgb, #646cff 85%, transparent),
+      0 0 28px color-mix(in srgb, #00c853 70%, transparent);
+  }
+  6% {
+    transform: scale(1.02) rotate(0deg);
+    filter: brightness(1.2) saturate(1.25) hue-rotate(0deg)
+      drop-shadow(0 0 6px color-mix(in srgb, #646cff 60%, transparent));
+    text-shadow: 0 0 8px color-mix(in srgb, #646cff 60%, transparent);
+  }
+  10% {
+    transform: scale(1.1) rotate(1deg);
+    filter: brightness(2.2) saturate(1.45) hue-rotate(14deg)
+      drop-shadow(0 0 10px color-mix(in srgb, #00c853 70%, transparent));
+    text-shadow: 0 0 10px color-mix(in srgb, #00c853 75%, transparent),
+      0 0 22px color-mix(in srgb, #646cff 55%, transparent);
+  }
+  12% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1) saturate(1) hue-rotate(0deg);
+    text-shadow: none;
+  }
+  20% {
+    transform: scale(1.09) rotate(-1deg);
+    filter: brightness(2.1) saturate(1.4) hue-rotate(-12deg)
+      drop-shadow(0 0 10px color-mix(in srgb, #646cff 75%, transparent));
+    text-shadow: 0 0 10px color-mix(in srgb, #646cff 80%, transparent),
+      0 0 22px color-mix(in srgb, #00c853 45%, transparent);
+  }
+  22% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1) saturate(1) hue-rotate(0deg);
+    text-shadow: none;
+  }
+  30% {
+    transform: scale(1.09) rotate(1deg);
+    filter: brightness(2.05) saturate(1.38) hue-rotate(10deg)
+      drop-shadow(0 0 10px color-mix(in srgb, #00c853 70%, transparent));
+    text-shadow: 0 0 10px color-mix(in srgb, #00c853 75%, transparent),
+      0 0 22px color-mix(in srgb, #646cff 45%, transparent);
+  }
+  32% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1) saturate(1) hue-rotate(0deg);
+    text-shadow: none;
+  }
+  40% {
+    transform: scale(1.08) rotate(-1deg);
+    filter: brightness(2) saturate(1.35) hue-rotate(-10deg)
+      drop-shadow(0 0 10px color-mix(in srgb, #646cff 75%, transparent));
+    text-shadow: 0 0 10px color-mix(in srgb, #646cff 80%, transparent),
+      0 0 20px color-mix(in srgb, #00c853 40%, transparent);
+  }
+  42% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1) saturate(1) hue-rotate(0deg);
+    text-shadow: none;
+  }
+  50% {
+    transform: scale(1.08) rotate(1deg);
+    filter: brightness(2) saturate(1.35) hue-rotate(12deg)
+      drop-shadow(0 0 10px color-mix(in srgb, #00c853 70%, transparent));
+    text-shadow: 0 0 10px color-mix(in srgb, #00c853 75%, transparent),
+      0 0 20px color-mix(in srgb, #646cff 40%, transparent);
+  }
+  52% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1) saturate(1) hue-rotate(0deg);
+    text-shadow: none;
+  }
+  60% {
+    transform: scale(1.07) rotate(-1deg);
+    filter: brightness(1.95) saturate(1.32) hue-rotate(-12deg)
+      drop-shadow(0 0 10px color-mix(in srgb, #646cff 75%, transparent));
+    text-shadow: 0 0 10px color-mix(in srgb, #646cff 80%, transparent),
+      0 0 18px color-mix(in srgb, #00c853 38%, transparent);
+  }
+  62% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1) saturate(1) hue-rotate(0deg);
+    text-shadow: none;
+  }
+  70% {
+    transform: scale(1.07) rotate(1deg);
+    filter: brightness(1.95) saturate(1.32) hue-rotate(12deg)
+      drop-shadow(0 0 10px color-mix(in srgb, #00c853 70%, transparent));
+    text-shadow: 0 0 10px color-mix(in srgb, #00c853 75%, transparent),
+      0 0 18px color-mix(in srgb, #646cff 38%, transparent);
+  }
+  72% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1) saturate(1) hue-rotate(0deg);
+    text-shadow: none;
+  }
+  80% {
+    transform: scale(1.06) rotate(-1deg);
+    filter: brightness(1.85) saturate(1.28) hue-rotate(-10deg)
+      drop-shadow(0 0 10px color-mix(in srgb, #646cff 70%, transparent));
+    text-shadow: 0 0 9px color-mix(in srgb, #646cff 75%, transparent),
+      0 0 16px color-mix(in srgb, #00c853 34%, transparent);
+  }
+  82% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1) saturate(1) hue-rotate(0deg);
+    text-shadow: none;
+  }
+  90% {
+    transform: scale(1.06) rotate(1deg);
+    filter: brightness(1.85) saturate(1.28) hue-rotate(10deg)
+      drop-shadow(0 0 10px color-mix(in srgb, #00c853 70%, transparent));
+    text-shadow: 0 0 9px color-mix(in srgb, #00c853 75%, transparent),
+      0 0 16px color-mix(in srgb, #646cff 34%, transparent);
+  }
+  92% {
+    transform: scale(1.01) rotate(0deg);
+    filter: brightness(1.12) saturate(1.12) hue-rotate(0deg);
+    text-shadow: 0 0 6px color-mix(in srgb, #646cff 40%, transparent);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1) saturate(1) hue-rotate(0deg);
+    text-shadow: none;
+  }
+}
+
+.stage-flash {
+  animation: stage-flash 10s ease-in-out;
+  will-change: transform, filter;
+  border-color: transparent;
+  box-shadow: none;
+  outline: none;
 }
 
 .summary-table {

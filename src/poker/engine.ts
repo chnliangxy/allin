@@ -41,7 +41,7 @@ export type RollbackPoint = {
   actionSeat: number
   dealerSeat: number
   boardCardsText: string
-  winners: number[]
+  potWinners: number[][]
   players: Array<{
     seat: number
     stack: number
@@ -62,7 +62,7 @@ export type GameState = {
   currentBet: number
   actionSeat: number
   boardCardsText: string
-  winners: number[]
+  potWinners: number[][]
   session: Session | null
   rollbackStack: RollbackPoint[]
   lastError: string | null
@@ -89,7 +89,8 @@ export type Action =
   | { type: 'NEXT_STREET' }
   | { type: 'SET_BOARD'; text: string }
   | { type: 'SET_HOLE'; seat: number; text: string }
-  | { type: 'SET_WINNERS'; seats: number[] }
+  | { type: 'SET_POT_WINNERS'; potIndex: number; seats: number[] }
+  | { type: 'SET_POT_WINNERS_ALL'; potWinners: number[][] }
   | { type: 'SETTLE_HAND' }
   | { type: 'REBUY'; seat: number; amount: number }
   | { type: 'RESET_SESSION' }
@@ -133,7 +134,7 @@ export function createInitialState(): GameState {
     currentBet: 0,
     actionSeat: 0,
     boardCardsText: '',
-    winners: [],
+    potWinners: [],
     session: null,
     rollbackStack: [],
     lastError: null,
@@ -169,6 +170,25 @@ function moveIndex(idx: number, from: number, to: number): number {
 
 function isEligibleForShowdown(p: Player): boolean {
   return p.status !== 'folded' && p.status !== 'out'
+}
+
+function initialPotWinners(players: Player[]): number[][] {
+  const pots = computeSidePots(players)
+  return pots.map((p) => (p.eligibleSeats.length === 1 ? [p.eligibleSeats[0]!] : []))
+}
+
+function normalizePotWinnersForPots(args: {
+  players: Player[]
+  pots: SidePot[]
+  potWinners: number[][]
+}): number[][] {
+  const maxSeat = Math.max(0, args.players.length - 1)
+  return args.pots.map((pot, idx) => {
+    if (pot.eligibleSeats.length === 1) return [pot.eligibleSeats[0]!] as number[]
+    const raw = args.potWinners[idx] ?? []
+    const uniq = Array.from(new Set(raw)).filter((s) => s >= 0 && s <= maxSeat)
+    return uniq.filter((s) => pot.eligibleSeats.includes(s))
+  })
 }
 
 function nextSeatFrom(players: Player[], fromSeat: number, predicate: (p: Player) => boolean): number {
@@ -248,7 +268,7 @@ function beginHand(state: GameState): GameState {
     street: 'preflop',
     currentBet,
     actionSeat,
-    winners: [],
+    potWinners: [],
     boardCardsText: '',
     rollbackStack: [],
     lastError: null,
@@ -285,7 +305,7 @@ function moveToNextStreet(state: GameState): GameState {
       currentBet: 0,
       players: state.players.map((p) => ({ ...p, streetBet: 0, acted: true })),
       actionSeat: state.actionSeat,
-      winners: remaining[0] ? [remaining[0].seat] : [],
+      potWinners: initialPotWinners(state.players),
       lastError: null,
     }
   }
@@ -297,7 +317,7 @@ function moveToNextStreet(state: GameState): GameState {
       street: state.street,
       currentBet: 0,
       players: state.players.map((p) => ({ ...p, streetBet: 0, acted: true })),
-      winners: [],
+      potWinners: initialPotWinners(state.players),
       lastError: null,
     }
   }
@@ -309,6 +329,7 @@ function moveToNextStreet(state: GameState): GameState {
       street: 'river',
       currentBet: 0,
       players: state.players.map((p) => ({ ...p, streetBet: 0, acted: true })),
+      potWinners: initialPotWinners(state.players),
       lastError: null,
     }
   }
@@ -367,7 +388,7 @@ export function computeSidePots(players: Player[]): SidePot[] {
 
 export function distributePots(
   pots: SidePot[],
-  winnerSeats: number[],
+  potWinners: number[][],
   dealerSeat: number,
   totalSeats: number,
 ): Map<number, number> {
@@ -382,8 +403,10 @@ export function distributePots(
     return ordered
   }
 
-  for (const pot of pots) {
-    const eligibleWinners = winnerSeats.filter((s) => pot.eligibleSeats.includes(s))
+  for (let idx = 0; idx < pots.length; idx++) {
+    const pot = pots[idx]!
+    const winnerSeats = potWinners[idx] ?? []
+    const eligibleWinners = pot.eligibleSeats.length === 1 ? [pot.eligibleSeats[0]!] : winnerSeats.filter((s) => pot.eligibleSeats.includes(s))
     if (eligibleWinners.length === 0) continue
 
     const share = Math.floor(pot.amount / eligibleWinners.length)
@@ -476,13 +499,12 @@ function applyPlayerAction(state: GameState, seat: number, action: PlayerAction)
   }
 
   if (countRemaining(players) <= 1) {
-    const remainingSeat = players.find((p) => p.status === 'active' || p.status === 'allin')?.seat
     return {
       ...state,
       players: players.map((p) => ({ ...p, acted: true })),
       currentBet,
       phase: 'showdown',
-      winners: remainingSeat !== undefined ? [remainingSeat] : [],
+      potWinners: initialPotWinners(players),
       lastError: null,
     }
   }
@@ -505,7 +527,11 @@ function applyPlayerAction(state: GameState, seat: number, action: PlayerAction)
 function settleHand(state: GameState): GameState {
   if (state.players.length < 2) return state
   const pots = computeSidePots(state.players)
-  const payoutMap = distributePots(pots, state.winners, state.dealerSeat, state.players.length)
+  const normalizedPotWinners = normalizePotWinnersForPots({ players: state.players, pots, potWinners: state.potWinners ?? [] })
+  if (pots.some((p, idx) => p.eligibleSeats.length > 1 && (normalizedPotWinners[idx]?.length ?? 0) === 0)) {
+    return { ...state, lastError: '请为每个池子分别选择胜者' }
+  }
+  const payoutMap = distributePots(pots, normalizedPotWinners, state.dealerSeat, state.players.length)
 
   const players = state.players.map((p) => {
     const payout = payoutMap.get(p.seat) ?? 0
@@ -531,7 +557,7 @@ function settleHand(state: GameState): GameState {
     street: 'preflop',
     currentBet: 0,
     actionSeat: dealerSeat,
-    winners: [],
+    potWinners: [],
     boardCardsText: '',
     rollbackStack: [],
     lastError: null,
@@ -565,7 +591,7 @@ function cancelHand(state: GameState): GameState {
     street: 'preflop',
     currentBet: 0,
     actionSeat: dealerSeat,
-    winners: [],
+    potWinners: [],
     boardCardsText: '',
     rollbackStack: [],
     lastError: null,
@@ -580,7 +606,7 @@ function makeRollbackPoint(state: GameState): RollbackPoint {
     actionSeat: state.actionSeat,
     dealerSeat: state.dealerSeat,
     boardCardsText: state.boardCardsText,
-    winners: [...state.winners],
+    potWinners: (state.potWinners ?? []).map((x) => [...x]),
     players: state.players.map((p) => ({
       seat: p.seat,
       stack: p.stack,
@@ -623,7 +649,7 @@ function rollbackOnce(state: GameState): GameState {
     actionSeat: last.actionSeat,
     dealerSeat: last.dealerSeat,
     boardCardsText: last.boardCardsText,
-    winners: [...last.winners],
+    potWinners: (last.potWinners ?? []).map((x) => [...x]),
     players,
     rollbackStack: stack.slice(0, -1),
     lastError: null,
@@ -665,7 +691,7 @@ export function reducer(state: GameState, action: Action): GameState {
       street: 'preflop',
       currentBet: 0,
       boardCardsText: '',
-      winners: [],
+      potWinners: [],
       rollbackStack: [],
       session: null,
       lastError: null,
@@ -674,10 +700,30 @@ export function reducer(state: GameState, action: Action): GameState {
 
   if (action.type === 'RESET_GAME') return createInitialState()
   if (action.type === 'SYNC_SET_SNAPSHOT') {
+    const raw = action.state as unknown as Record<string, unknown>
+    const legacyWinners = Array.isArray(raw.winners) ? (raw.winners as unknown[]).filter((x) => typeof x === 'number') : null
+    const incoming = action.state as GameState
+    const pots = computeSidePots(incoming.players ?? [])
+    const potWinners =
+      Array.isArray((incoming as unknown as { potWinners?: unknown }).potWinners) && (incoming as unknown as { potWinners?: unknown }).potWinners
+        ? normalizePotWinnersForPots({
+            players: incoming.players ?? [],
+            pots,
+            potWinners: (incoming as unknown as { potWinners: number[][] }).potWinners,
+          })
+        : legacyWinners
+          ? normalizePotWinnersForPots({
+              players: incoming.players ?? [],
+              pots,
+              potWinners: pots.map(() => legacyWinners),
+            })
+          : []
+
     return {
-      ...action.state,
-      rollbackStack: action.state.rollbackStack ?? [],
-      lastError: typeof action.state.lastError === 'string' ? action.state.lastError : null,
+      ...incoming,
+      rollbackStack: incoming.rollbackStack ?? [],
+      potWinners,
+      lastError: typeof incoming.lastError === 'string' ? incoming.lastError : null,
     }
   }
 
@@ -691,7 +737,7 @@ export function reducer(state: GameState, action: Action): GameState {
       street: 'preflop',
       currentBet: 0,
       boardCardsText: '',
-      winners: [],
+      potWinners: [],
       rollbackStack: [],
       actionSeat: cleared.dealerSeat,
       session: {
@@ -712,7 +758,7 @@ export function reducer(state: GameState, action: Action): GameState {
       street: 'preflop',
       currentBet: 0,
       boardCardsText: '',
-      winners: [],
+      potWinners: [],
       rollbackStack: [],
       session: { ...cleared.session, endedAt: action.endedAt },
       lastError: null,
@@ -831,7 +877,7 @@ export function reducer(state: GameState, action: Action): GameState {
         actionSeat: dealerSeat,
         currentBet: 0,
         boardCardsText: '',
-        winners: [],
+        potWinners: [],
         rollbackStack: [],
         session,
         lastError: null,
@@ -879,7 +925,7 @@ export function reducer(state: GameState, action: Action): GameState {
       dealerSeat,
       actionSeat: dealerSeat,
       boardCardsText: '',
-      winners: [],
+      potWinners: [],
       rollbackStack: [],
       session,
       lastError: null,
@@ -919,9 +965,24 @@ export function reducer(state: GameState, action: Action): GameState {
     return { ...cleared, players }
   }
 
-  if (action.type === 'SET_WINNERS') {
-    const seats = Array.from(new Set(action.seats)).filter((s) => s >= 0 && s < cleared.players.length)
-    return { ...cleared, winners: seats }
+  if (action.type === 'SET_POT_WINNERS') {
+    const pots = computeSidePots(cleared.players)
+    const potIndex = clampInt(action.potIndex, 0, Math.max(0, pots.length - 1))
+    const base = cleared.potWinners ?? []
+    const merged = pots.map((p, idx) => {
+      if (idx !== potIndex) return base[idx] ?? (p.eligibleSeats.length === 1 ? [p.eligibleSeats[0]!] : [])
+      if (p.eligibleSeats.length === 1) return [p.eligibleSeats[0]!] as number[]
+      const maxSeat = Math.max(0, cleared.players.length - 1)
+      const uniq = Array.from(new Set(action.seats)).filter((s) => s >= 0 && s <= maxSeat)
+      return uniq.filter((s) => p.eligibleSeats.includes(s))
+    })
+    return { ...cleared, potWinners: merged }
+  }
+
+  if (action.type === 'SET_POT_WINNERS_ALL') {
+    const pots = computeSidePots(cleared.players)
+    const normalized = normalizePotWinnersForPots({ players: cleared.players, pots, potWinners: action.potWinners ?? [] })
+    return { ...cleared, potWinners: normalized }
   }
 
   if (action.type === 'SETTLE_HAND') return settleHand(cleared)
